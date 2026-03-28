@@ -1,4 +1,48 @@
 import '@testing-library/jest-dom'
+import React from 'react'
+
+// Mock performance monitoring modules
+jest.mock('@/lib/performance-monitor', () => ({
+  performanceMonitor: {
+    getMetrics: jest.fn(() => []),
+    getAlerts: jest.fn(() => []),
+    getAverageMetrics: jest.fn(() => ({})),
+    clearMetrics: jest.fn(),
+    destroy: jest.fn(),
+  },
+}))
+
+jest.mock('@/lib/performance-reporting', () => ({
+  performanceReporting: {
+    generateReport: jest.fn(() => ({
+      timestamp: Date.now(),
+      url: 'test-url',
+      metrics: {},
+      alerts: [],
+      score: 85,
+      recommendations: [],
+    })),
+    analyzeBundle: jest.fn(() => Promise.resolve({})),
+    exportReport: jest.fn(() => '{}'),
+    sendReportToService: jest.fn(() => Promise.resolve()),
+    getHistoricalReports: jest.fn(() => []),
+    saveReport: jest.fn(),
+  },
+}))
+
+jest.mock('@/hooks/usePerformanceMonitoring', () => ({
+  usePerformanceMonitoring: jest.fn(() => ({
+    metrics: [],
+    alerts: [],
+    currentReport: null,
+    isMonitoring: true,
+    startMonitoring: jest.fn(),
+    stopMonitoring: jest.fn(),
+    generateReport: jest.fn(),
+    clearData: jest.fn(),
+    averageMetrics: {},
+  })),
+}))
 
 // Mock Next.js router
 jest.mock('next/router', () => ({
@@ -52,3 +96,17 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: jest.fn(),
   })),
 })
+
+// Mock performance API for web vitals
+global.PerformanceObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  disconnect: jest.fn(),
+}))
+
+global.performance = {
+  ...global.performance,
+  getEntriesByType: jest.fn(() => []),
+  mark: jest.fn(),
+  measure: jest.fn(),
+  now: jest.fn(() => Date.now()),
+}
