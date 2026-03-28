@@ -1,48 +1,10 @@
 /**
- * Code Execution Service (Simulation)
- * Mock service for evaluating code submissions
- */
-export class CodeExecutionService {
-  /**
-   * Run code against test cases
-   */
-  async evaluate(code: string, language: string, testCases: any[]): Promise<any> {
-    // Simulated sandbox delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simple mock logic:
-    // 1. Check for syntax errors (mock)
-    if (code.includes('syntax error')) {
-      return { success: false, error: 'SyntaxError: Unexpected token' };
-    }
-    
-    // 2. Run against test cases
-    const results = testCases.map(tc => {
-      // Logic for simple input/output matching (mock)
-      const passed = code.length > 5; // Placeholder
-      return {
-        passed,
-        input: tc.input,
-        expected: tc.expectedOutput,
-        actual: passed ? tc.expectedOutput : 'undefined'
-      };
-    });
-    
-    return {
-      success: true,
-      testResults: results,
-      stats: {
-        memory: 12.5, // MB
-        runtime: 45 // ms
-      }
-    };
-  }
  * Code Execution Service
  * Provides secure sandboxed code execution for programming assignments
  */
 
-import { CodeSubmission, CodeTestResult } from '../models/Assignment';
-import { v4 as uuidv4 } from 'uuid';
+import { CodeSubmission, CodeTestResult } from "../models/Assignment";
+import { v4 as uuidv4 } from "uuid";
 
 export interface ExecutionRequest {
   code: string;
@@ -79,75 +41,96 @@ export interface LanguageConfig {
 
 export class CodeExecutionService {
   private languageConfigs: Map<string, LanguageConfig> = new Map([
-    ['javascript', {
-      name: 'JavaScript',
-      extension: 'js',
-      dockerImage: 'node:18-alpine',
-      runCommand: 'node',
-      maxExecutionTime: 5000,
-      maxMemory: 128
-    }],
-    ['python', {
-      name: 'Python',
-      extension: 'py',
-      dockerImage: 'python:3.11-alpine',
-      runCommand: 'python3',
-      maxExecutionTime: 5000,
-      maxMemory: 128
-    }],
-    ['java', {
-      name: 'Java',
-      extension: 'java',
-      dockerImage: 'openjdk:17-alpine',
-      compileCommand: 'javac',
-      runCommand: 'java',
-      maxExecutionTime: 10000,
-      maxMemory: 256
-    }],
-    ['cpp', {
-      name: 'C++',
-      extension: 'cpp',
-      dockerImage: 'gcc:latest',
-      compileCommand: 'g++',
-      runCommand: './program',
-      maxExecutionTime: 5000,
-      maxMemory: 128
-    }],
-    ['c', {
-      name: 'C',
-      extension: 'c',
-      dockerImage: 'gcc:latest',
-      compileCommand: 'gcc',
-      runCommand: './program',
-      maxExecutionTime: 5000,
-      maxMemory: 128
-    }],
-    ['go', {
-      name: 'Go',
-      extension: 'go',
-      dockerImage: 'golang:1.21-alpine',
-      runCommand: 'go run',
-      maxExecutionTime: 5000,
-      maxMemory: 128
-    }],
-    ['rust', {
-      name: 'Rust',
-      extension: 'rs',
-      dockerImage: 'rust:1.71-alpine',
-      compileCommand: 'rustc',
-      runCommand: './program',
-      maxExecutionTime: 10000,
-      maxMemory: 256
-    }]
+    [
+      "javascript",
+      {
+        name: "JavaScript",
+        extension: "js",
+        dockerImage: "node:18-alpine",
+        runCommand: "node",
+        maxExecutionTime: 5000,
+        maxMemory: 128,
+      },
+    ],
+    [
+      "python",
+      {
+        name: "Python",
+        extension: "py",
+        dockerImage: "python:3.11-alpine",
+        runCommand: "python3",
+        maxExecutionTime: 5000,
+        maxMemory: 128,
+      },
+    ],
+    [
+      "java",
+      {
+        name: "Java",
+        extension: "java",
+        dockerImage: "openjdk:17-alpine",
+        compileCommand: "javac",
+        runCommand: "java",
+        maxExecutionTime: 10000,
+        maxMemory: 256,
+      },
+    ],
+    [
+      "cpp",
+      {
+        name: "C++",
+        extension: "cpp",
+        dockerImage: "gcc:latest",
+        compileCommand: "g++",
+        runCommand: "./program",
+        maxExecutionTime: 5000,
+        maxMemory: 128,
+      },
+    ],
+    [
+      "c",
+      {
+        name: "C",
+        extension: "c",
+        dockerImage: "gcc:latest",
+        compileCommand: "gcc",
+        runCommand: "./program",
+        maxExecutionTime: 5000,
+        maxMemory: 128,
+      },
+    ],
+    [
+      "go",
+      {
+        name: "Go",
+        extension: "go",
+        dockerImage: "golang:1.21-alpine",
+        runCommand: "go run",
+        maxExecutionTime: 5000,
+        maxMemory: 128,
+      },
+    ],
+    [
+      "rust",
+      {
+        name: "Rust",
+        extension: "rs",
+        dockerImage: "rust:1.71-alpine",
+        compileCommand: "rustc",
+        runCommand: "./program",
+        maxExecutionTime: 10000,
+        maxMemory: 256,
+      },
+    ],
   ]);
 
   async executeCode(request: ExecutionRequest): Promise<ExecutionResult> {
     const config = this.languageConfigs.get(request.language);
-    
+
     if (!config) {
       return {
         success: false,
-        error: `Unsupported language: ${request.language}`
+        error: `Unsupported language: ${request.language}`,
       };
     }
 
@@ -158,18 +141,22 @@ export class CodeExecutionService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown execution error'
+        error:
+          error instanceof Error ? error.message : "Unknown execution error",
       };
     }
   }
 
-  async runTests(codeSubmission: CodeSubmission, testCases: Array<{
-    input: string;
-    expectedOutput: string;
-    name?: string;
-  }>): Promise<CodeTestResult[]> {
+  async runTests(
+    codeSubmission: CodeSubmission,
+    testCases: Array<{
+      input: string;
+      expectedOutput: string;
+      name?: string;
+    }>,
+  ): Promise<CodeTestResult[]> {
     const config = this.languageConfigs.get(codeSubmission.language);
-    
+
     if (!config) {
       throw new Error(`Unsupported language: ${codeSubmission.language}`);
     }
@@ -182,18 +169,21 @@ export class CodeExecutionService {
         language: codeSubmission.language,
         input: testCase.input,
         timeout: config.maxExecutionTime,
-        memoryLimit: config.maxMemory
+        memoryLimit: config.maxMemory,
       });
 
       const testResult: CodeTestResult = {
         id: uuidv4(),
         testName: testCase.name || `Test ${testResults.length + 1}`,
-        passed: result.success && this.normalizeOutput(result.output || '') === this.normalizeOutput(testCase.expectedOutput),
+        passed:
+          result.success &&
+          this.normalizeOutput(result.output || "") ===
+            this.normalizeOutput(testCase.expectedOutput),
         input: testCase.input,
         expectedOutput: testCase.expectedOutput,
-        actualOutput: result.output || '',
+        actualOutput: result.output || "",
         executionTime: result.executionTime,
-        errorMessage: result.error
+        errorMessage: result.error,
       };
 
       testResults.push(testResult);
@@ -202,18 +192,21 @@ export class CodeExecutionService {
     return testResults;
   }
 
-  async validateCode(code: string, language: string): Promise<{
+  async validateCode(
+    code: string,
+    language: string,
+  ): Promise<{
     isValid: boolean;
     errors: string[];
     warnings: string[];
   }> {
     const config = this.languageConfigs.get(language);
-    
+
     if (!config) {
       return {
         isValid: false,
         errors: [`Unsupported language: ${language}`],
-        warnings: []
+        warnings: [],
       };
     }
 
@@ -222,14 +215,16 @@ export class CodeExecutionService {
 
     // Basic syntax validation
     try {
-      if (language === 'javascript') {
+      if (language === "javascript") {
         this.validateJavaScript(code, errors, warnings);
-      } else if (language === 'python') {
+      } else if (language === "python") {
         this.validatePython(code, errors, warnings);
       }
       // Add more language-specific validations as needed
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : 'Syntax validation failed');
+      errors.push(
+        error instanceof Error ? error.message : "Syntax validation failed",
+      );
     }
 
     // Security checks
@@ -238,32 +233,39 @@ export class CodeExecutionService {
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
-  getSupportedLanguages(): Array<{ code: string; name: string; extension: string }> {
+  getSupportedLanguages(): Array<{
+    code: string;
+    name: string;
+    extension: string;
+  }> {
     return Array.from(this.languageConfigs.entries()).map(([code, config]) => ({
       code,
       name: config.name,
-      extension: config.extension
+      extension: config.extension,
     }));
   }
 
-  private async executeInSandbox(request: ExecutionRequest, config: LanguageConfig): Promise<ExecutionResult> {
+  private async executeInSandbox(
+    request: ExecutionRequest,
+    config: LanguageConfig,
+  ): Promise<ExecutionResult> {
     // In a real implementation, this would create and run a Docker container
     // For now, we'll simulate execution
-    
+
     const startTime = Date.now();
-    
+
     try {
       // Simulate code execution
-      let output = '';
+      let output = "";
       let exitCode = 0;
 
-      if (request.language === 'javascript') {
+      if (request.language === "javascript") {
         output = this.executeJavaScript(request.code, request.input);
-      } else if (request.language === 'python') {
+      } else if (request.language === "python") {
         output = this.executePython(request.code, request.input);
       } else {
         // For other languages, just return a mock output
@@ -277,14 +279,14 @@ export class CodeExecutionService {
         output,
         exitCode,
         executionTime,
-        memoryUsed: 32 // Mock memory usage
+        memoryUsed: 32, // Mock memory usage
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Execution failed',
+        error: error instanceof Error ? error.message : "Execution failed",
         exitCode: 1,
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
       };
     }
   }
@@ -294,7 +296,7 @@ export class CodeExecutionService {
       // Create a safe execution context
       const sandbox = {
         console: {
-          log: (...args: any[]) => args.join(' ')
+          log: (...args: any[]) => args.join(" "),
         },
         // Add safe built-in functions as needed
       };
@@ -302,25 +304,35 @@ export class CodeExecutionService {
       // Execute code in sandbox (simplified - in production, use vm2 or similar)
       const func = new Function(...Object.keys(sandbox), code);
       const result = func(...Object.values(sandbox));
-      
-      return result !== undefined ? String(result) : 'Code executed successfully';
+
+      return result !== undefined
+        ? String(result)
+        : "Code executed successfully";
     } catch (error) {
-      throw new Error(`JavaScript execution error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `JavaScript execution error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
   private executePython(code: string, input?: string): string {
     // In a real implementation, this would execute Python code in a sandbox
     // For now, return a mock result
-    return 'Python code executed successfully';
+    return "Python code executed successfully";
   }
 
-  private validateJavaScript(code: string, errors: string[], warnings: string[]): void {
+  private validateJavaScript(
+    code: string,
+    errors: string[],
+    warnings: string[],
+  ): void {
     // Basic JavaScript syntax validation
     try {
       new Function(code);
     } catch (error) {
-      errors.push(`Syntax error: ${error instanceof Error ? error.message : 'Invalid syntax'}`);
+      errors.push(
+        `Syntax error: ${error instanceof Error ? error.message : "Invalid syntax"}`,
+      );
     }
 
     // Check for potentially dangerous operations
@@ -330,32 +342,39 @@ export class CodeExecutionService {
       /setTimeout\s*\(/,
       /setInterval\s*\(/,
       /require\s*\(/,
-      /import\s+.*from/
+      /import\s+.*from/,
     ];
 
     for (const pattern of dangerousPatterns) {
       if (pattern.test(code)) {
-        warnings.push('Potentially dangerous operation detected');
+        warnings.push("Potentially dangerous operation detected");
         break;
       }
     }
   }
 
-  private validatePython(code: string, errors: string[], warnings: string[]): void {
+  private validatePython(
+    code: string,
+    errors: string[],
+    warnings: string[],
+  ): void {
     // Basic Python syntax validation (simplified)
-    const lines = code.split('\n');
+    const lines = code.split("\n");
     let indentStack = [0];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (line.trim() === '') continue;
+      if (line.trim() === "") continue;
 
       const indent = line.length - line.trimStart().length;
-      
+
       if (indent > indentStack[indentStack.length - 1]) {
         indentStack.push(indent);
       } else if (indent < indentStack[indentStack.length - 1]) {
-        while (indentStack.length > 0 && indent < indentStack[indentStack.length - 1]) {
+        while (
+          indentStack.length > 0 &&
+          indent < indentStack[indentStack.length - 1]
+        ) {
           indentStack.pop();
         }
         if (indent !== indentStack[indentStack.length - 1]) {
@@ -365,7 +384,14 @@ export class CodeExecutionService {
     }
 
     // Check for dangerous imports
-    const dangerousImports = ['os', 'sys', 'subprocess', 'socket', 'urllib', 'requests'];
+    const dangerousImports = [
+      "os",
+      "sys",
+      "subprocess",
+      "socket",
+      "urllib",
+      "requests",
+    ];
     for (const imp of dangerousImports) {
       if (code.includes(`import ${imp}`) || code.includes(`from ${imp}`)) {
         warnings.push(`Potentially dangerous module import: ${imp}`);
@@ -373,7 +399,12 @@ export class CodeExecutionService {
     }
   }
 
-  private performSecurityChecks(code: string, language: string, errors: string[], warnings: string[]): void {
+  private performSecurityChecks(
+    code: string,
+    language: string,
+    errors: string[],
+    warnings: string[],
+  ): void {
     // Common security checks for all languages
     const dangerousPatterns = [
       /rm\s+-rf/i,
@@ -383,12 +414,12 @@ export class CodeExecutionService {
       /exec\s*\(/i,
       /shell_exec\s*\(/i,
       /eval\s*\(/i,
-      /__import__\s*\(/i
+      /__import__\s*\(/i,
     ];
 
     for (const pattern of dangerousPatterns) {
       if (pattern.test(code)) {
-        errors.push('Potentially dangerous code detected');
+        errors.push("Potentially dangerous code detected");
         break;
       }
     }
@@ -397,14 +428,14 @@ export class CodeExecutionService {
     const loopPatterns = [/while\s*\(.*true\)/i, /for\s*\(.*;;.*\)/i];
     for (const pattern of loopPatterns) {
       if (pattern.test(code)) {
-        warnings.push('Potential infinite loop detected');
+        warnings.push("Potential infinite loop detected");
       }
     }
   }
 
   private normalizeOutput(output: string): string {
     // Normalize output for comparison (remove extra whitespace, etc.)
-    return output.trim().replace(/\s+/g, ' ');
+    return output.trim().replace(/\s+/g, " ");
   }
 
   async getExecutionStatistics(): Promise<{
@@ -418,13 +449,13 @@ export class CodeExecutionService {
       totalExecutions: 0,
       averageExecutionTime: 0,
       successRate: 0,
-      languageUsage: {}
+      languageUsage: {},
     };
   }
 
   async cleanupResources(): Promise<void> {
     // In a real implementation, this would clean up Docker containers and temporary files
-    console.log('Cleaning up execution resources...');
+    console.log("Cleaning up execution resources...");
   }
 }
 

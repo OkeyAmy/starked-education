@@ -1,10 +1,10 @@
 #![cfg(test)]
 
-use soroban_sdk::{vec, Address, Env, String, Vec};
 use crate::syncCoordination::{
-    SyncCoordinationContract, Device, DeviceType, SyncStatus, ConflictResolution, SyncEntry, 
-    SyncConflict, SyncSession, SyncCoordinationKey
+    ConflictResolution, Device, DeviceType, SyncConflict, SyncCoordinationContract,
+    SyncCoordinationKey, SyncEntry, SyncSession, SyncStatus,
 };
+use soroban_sdk::{vec, Address, Env, String, Vec};
 
 #[test]
 fn test_initialize() {
@@ -13,9 +13,11 @@ fn test_initialize() {
 
     // Test successful initialization
     SyncCoordinationContract::initialize(env.clone(), admin.clone());
-    
+
     // Verify admin is set
-    let stored_admin: Address = env.storage().instance()
+    let stored_admin: Address = env
+        .storage()
+        .instance()
         .get(&SyncCoordinationKey::Admin)
         .unwrap();
     assert_eq!(stored_admin, admin);
@@ -48,7 +50,11 @@ fn test_register_device() {
         user.clone(),
         DeviceType::Mobile,
         String::from_str(&env, "iPhone 14"),
-        vec![&env, String::from_str(&env, "read"), String::from_str(&env, "write")],
+        vec![
+            &env,
+            String::from_str(&env, "read"),
+            String::from_str(&env, "write"),
+        ],
     );
 
     // Verify device was created
@@ -87,7 +93,8 @@ fn test_start_sync_session() {
     );
 
     // Start sync session
-    let session_id = SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
+    let session_id =
+        SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
 
     // Verify session was created
     let session = SyncCoordinationContract::get_sync_session(env.clone(), session_id.clone());
@@ -124,7 +131,8 @@ fn test_submit_sync_entry() {
         vec![&env],
     );
 
-    let session_id = SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
+    let session_id =
+        SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
 
     // Submit sync entry
     let entry_id = SyncCoordinationContract::submit_sync_entry(
@@ -164,7 +172,7 @@ fn test_resolve_conflict_last_write_wins() {
 
     // Create a conflict (simplified - in real scenario would be detected during sync)
     let conflict_id = String::from_str(&env, "conflict_1");
-    
+
     // Test last-write-wins resolution
     let result = SyncCoordinationContract::resolve_conflict(
         env.clone(),
@@ -180,7 +188,10 @@ fn test_resolve_conflict_last_write_wins() {
     let conflict = SyncCoordinationContract::get_sync_conflict(env, conflict_id);
     assert_eq!(conflict.resolution, Some(ConflictResolution::LastWriteWins));
     assert_eq!(conflict.resolved_by, Some(admin));
-    assert_eq!(conflict.winning_entry_id, Some(String::from_str(&env, "entry_1")));
+    assert_eq!(
+        conflict.winning_entry_id,
+        Some(String::from_str(&env, "entry_1"))
+    );
 }
 
 #[test]
@@ -193,7 +204,7 @@ fn test_resolve_conflict_first_write_wins() {
     SyncCoordinationContract::initialize(env.clone(), admin);
 
     let conflict_id = String::from_str(&env, "conflict_2");
-    
+
     // Test first-write-wins resolution
     let result = SyncCoordinationContract::resolve_conflict(
         env.clone(),
@@ -206,7 +217,10 @@ fn test_resolve_conflict_first_write_wins() {
     assert!(result);
 
     let conflict = SyncCoordinationContract::get_sync_conflict(env, conflict_id);
-    assert_eq!(conflict.resolution, Some(ConflictResolution::FirstWriteWins));
+    assert_eq!(
+        conflict.resolution,
+        Some(ConflictResolution::FirstWriteWins)
+    );
 }
 
 #[test]
@@ -219,7 +233,7 @@ fn test_resolve_conflict_timestamp_wins() {
     SyncCoordinationContract::initialize(env.clone(), admin);
 
     let conflict_id = String::from_str(&env, "conflict_3");
-    
+
     // Test timestamp-wins resolution
     let result = SyncCoordinationContract::resolve_conflict(
         env.clone(),
@@ -245,7 +259,7 @@ fn test_resolve_conflict_manual_review() {
     SyncCoordinationContract::initialize(env.clone(), admin);
 
     let conflict_id = String::from_str(&env, "conflict_4");
-    
+
     // Test manual review resolution
     let result = SyncCoordinationContract::resolve_conflict(
         env.clone(),
@@ -283,7 +297,8 @@ fn test_complete_sync_session() {
         vec![&env],
     );
 
-    let session_id = SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
+    let session_id =
+        SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
 
     // Complete session successfully
     let result = SyncCoordinationContract::complete_sync_session(
@@ -325,7 +340,8 @@ fn test_complete_sync_session_with_error() {
         vec![&env],
     );
 
-    let session_id = SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
+    let session_id =
+        SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
 
     // Complete session with error
     let error_message = String::from_str(&env, "Network timeout");
@@ -367,7 +383,8 @@ fn test_deactivate_device() {
     assert!(device.is_active);
 
     // Deactivate device
-    let result = SyncCoordinationContract::deactivate_device(env.clone(), user.clone(), device_id.clone());
+    let result =
+        SyncCoordinationContract::deactivate_device(env.clone(), user.clone(), device_id.clone());
     assert!(result);
 
     // Verify device is now inactive
@@ -394,10 +411,11 @@ fn test_update_device_capabilities() {
     );
 
     // Update capabilities
-    let new_capabilities = vec![&env, 
-        String::from_str(&env, "read"), 
-        String::from_str(&env, "write"), 
-        String::from_str(&env, "delete")
+    let new_capabilities = vec![
+        &env,
+        String::from_str(&env, "read"),
+        String::from_str(&env, "write"),
+        String::from_str(&env, "delete"),
     ];
     let result = SyncCoordinationContract::update_device_capabilities(
         env.clone(),
@@ -411,7 +429,9 @@ fn test_update_device_capabilities() {
     // Verify capabilities were updated
     let updated_device = SyncCoordinationContract::get_device(env, device_id);
     assert_eq!(updated_device.capabilities.len(), 3);
-    assert!(updated_device.capabilities.contains(&String::from_str(&env, "delete")));
+    assert!(updated_device
+        .capabilities
+        .contains(&String::from_str(&env, "delete")));
 }
 
 #[test]
@@ -478,15 +498,17 @@ fn test_get_user_sync_history() {
     );
 
     // Create multiple sync sessions
-    let session1_id = SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
+    let session1_id =
+        SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
     SyncCoordinationContract::complete_sync_session(env.clone(), session1_id, true, None);
 
-    let session2_id = SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
+    let session2_id =
+        SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
     SyncCoordinationContract::complete_sync_session(env.clone(), session2_id, true, None);
 
     // Get sync history (simplified implementation)
     let history = SyncCoordinationContract::get_user_sync_history(env, user.clone(), 10);
-    
+
     // In production, this would return actual session IDs
     // For now, we just verify the function exists and returns a Vec
     assert!(history.is_empty()); // Simplified implementation returns empty
@@ -503,7 +525,7 @@ fn test_get_user_conflicts() {
 
     // Get user conflicts (simplified implementation)
     let conflicts = SyncCoordinationContract::get_user_conflicts(env, user);
-    
+
     // In production, this would return actual conflict IDs
     // For now, we just verify the function exists and returns a Vec
     assert!(conflicts.is_empty()); // Simplified implementation returns empty
@@ -578,7 +600,8 @@ fn test_complete_completed_session() {
         vec![&env],
     );
 
-    let session_id = SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
+    let session_id =
+        SyncCoordinationContract::start_sync_session(env.clone(), user.clone(), device_id.clone());
 
     // Complete session
     SyncCoordinationContract::complete_sync_session(env.clone(), session_id.clone(), true, None);

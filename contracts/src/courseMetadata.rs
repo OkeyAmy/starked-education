@@ -1,6 +1,8 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String, Vec, Map, Symbol, U256};
-use crate::utils::storage::{StorageUtils, PackedRating, PackedTimestamps};
+use crate::utils::storage::{PackedRating, PackedTimestamps, StorageUtils};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, Address, Env, Map, String, Symbol, Vec, U256,
+};
 
 /// Optimized course status using bit packing
 #[contracttype]
@@ -16,7 +18,7 @@ impl CourseStatus {
     pub fn to_u8(&self) -> u8 {
         *self as u8
     }
-    
+
     pub fn from_u8(value: u8) -> Self {
         match value & 0x03 {
             0 => CourseStatus::Active,
@@ -41,12 +43,12 @@ pub struct CourseMetadata {
     pub duration: u64,
     pub price: u64,
     pub prerequisites_hash: String, // Hash of prerequisites vector
-    pub objectives_hash: String,   // Hash of objectives vector
-    pub syllabus_hash: String,     // IPFS hash
+    pub objectives_hash: String,    // Hash of objectives vector
+    pub syllabus_hash: String,      // IPFS hash
     pub thumbnail_hash: String,     // Hash of thumbnail URL
-    pub tags_hash: String,         // Hash of tags vector
+    pub tags_hash: String,          // Hash of tags vector
     pub language: String,
-    pub flags: u8,                 // Packed certificate_enabled, verification status, etc.
+    pub flags: u8, // Packed certificate_enabled, verification status, etc.
     pub max_students: u32,
     pub current_enrollments: u32,
     pub timestamps: PackedTimestamps,
@@ -60,10 +62,10 @@ pub struct CourseCompletion {
     pub id: String,
     pub course_id: String,
     pub student: Address,
-    pub timestamp: u64,        // Packed completion_date and verification status
-    pub final_grade: u32,       // 0-100
+    pub timestamp: u64,   // Packed completion_date and verification status
+    pub final_grade: u32, // 0-100
     pub certificate_hash: String,
-    pub skills_hash: String,    // Hash of skills_acquired vector
+    pub skills_hash: String, // Hash of skills_acquired vector
 }
 
 /// Optimized instructor profile with packed data
@@ -78,7 +80,7 @@ pub struct InstructorProfile {
     pub rating: PackedRating,
     pub course_count: u32,
     pub total_students: u32,
-    pub flags: u8,             // Packed verification status and other booleans
+    pub flags: u8, // Packed verification status and other booleans
     pub created_at: u64,
 }
 
@@ -111,11 +113,19 @@ impl CourseMetadataContract {
         if env.storage().instance().has(&CourseMetadataKey::Admin) {
             panic!("Contract already initialized");
         }
-        
-        env.storage().instance().set(&CourseMetadataKey::Admin, &admin);
-        env.storage().instance().set(&CourseMetadataKey::CourseCount, &0u64);
-        env.storage().instance().set(&CourseMetadataKey::InstructorCount, &0u64);
-        env.storage().instance().set(&CourseMetadataKey::CompletionCount, &0u64);
+
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::Admin, &admin);
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::CourseCount, &0u64);
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::InstructorCount, &0u64);
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::CompletionCount, &0u64);
     }
 
     /// Create and store course metadata with optimized storage
@@ -138,30 +148,41 @@ impl CourseMetadataContract {
         max_students: u64,
     ) -> String {
         // Check if instructor exists, create if not
-        if !env.storage().instance().has(&CourseMetadataKey::Instructor(instructor.clone())) {
+        if !env
+            .storage()
+            .instance()
+            .has(&CourseMetadataKey::Instructor(instructor.clone()))
+        {
             Self::create_instructor_profile(env, instructor.clone());
         }
 
-        let course_count: u64 = env.storage().instance()
+        let course_count: u64 = env
+            .storage()
+            .instance()
             .get(&CourseMetadataKey::CourseCount)
             .unwrap_or(0);
-        
+
         let course_id = format!("course_{}", course_count + 1);
         let timestamp = env.ledger().timestamp();
-        
+
         // Generate hashes for large data structures
         let prerequisites_hash = Self::generate_vector_hash(&prerequisites);
         let objectives_hash = Self::generate_vector_hash(&learning_objectives);
         let tags_hash = Self::generate_vector_hash(&tags);
         let thumbnail_hash = Self::generate_string_hash(&thumbnail_url);
-        
+
         // Create verification hash
-        let verification_data = format!("{}{}{}{}{}", title, description, instructor, price, timestamp);
+        let verification_data = format!(
+            "{}{}{}{}{}",
+            title, description, instructor, price, timestamp
+        );
         let verification_hash = Self::generate_hash(env, verification_data);
 
         // Pack flags
         let mut flags = CourseStatus::Active.to_u8();
-        if certificate_enabled { flags |= 0x04; }
+        if certificate_enabled {
+            flags |= 0x04;
+        }
         // Bits 3-7 reserved for future use
 
         let course_metadata = CourseMetadata {
@@ -187,28 +208,46 @@ impl CourseMetadataContract {
         };
 
         // Store main metadata
-        env.storage().instance().set(&CourseMetadataKey::Course(course_id.clone()), &course_metadata);
-        env.storage().instance().set(&CourseMetadataKey::CourseCount, &(course_count + 1));
-        
+        env.storage().instance().set(
+            &CourseMetadataKey::Course(course_id.clone()),
+            &course_metadata,
+        );
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::CourseCount, &(course_count + 1));
+
         // Store large vectors separately
         if !prerequisites.is_empty() {
-            env.storage().instance().set(&CourseMetadataKey::CoursePrerequisites(course_id.clone()), &prerequisites);
+            env.storage().instance().set(
+                &CourseMetadataKey::CoursePrerequisites(course_id.clone()),
+                &prerequisites,
+            );
         }
         if !learning_objectives.is_empty() {
-            env.storage().instance().set(&CourseMetadataKey::CourseObjectives(course_id.clone()), &learning_objectives);
+            env.storage().instance().set(
+                &CourseMetadataKey::CourseObjectives(course_id.clone()),
+                &learning_objectives,
+            );
         }
         if !tags.is_empty() {
-            env.storage().instance().set(&CourseMetadataKey::CourseTags(course_id.clone()), &tags);
+            env.storage()
+                .instance()
+                .set(&CourseMetadataKey::CourseTags(course_id.clone()), &tags);
         }
-        
+
         // Initialize rating
         let rating = PackedRating::new(0, 0);
-        env.storage().instance().set(&CourseMetadataKey::CourseRating(course_id.clone()), &rating);
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::CourseRating(course_id.clone()), &rating);
 
         // Update instructor course count
         let mut instructor_profile = Self::get_instructor_profile(env, instructor.clone());
         instructor_profile.course_count += 1;
-        env.storage().instance().set(&CourseMetadataKey::Instructor(instructor), &instructor_profile);
+        env.storage().instance().set(
+            &CourseMetadataKey::Instructor(instructor),
+            &instructor_profile,
+        );
 
         course_id
     }
@@ -234,7 +273,9 @@ impl CourseMetadataContract {
         max_students: Option<u64>,
         status: Option<CourseStatus>,
     ) -> bool {
-        let mut course_metadata: CourseMetadata = env.storage().instance()
+        let mut course_metadata: CourseMetadata = env
+            .storage()
+            .instance()
             .get(&CourseMetadataKey::Course(course_id.clone()))
             .unwrap_or_else(|| panic!("Course not found"));
 
@@ -293,31 +334,37 @@ impl CourseMetadataContract {
         course_metadata.updated_at = env.ledger().timestamp();
 
         // Update verification hash
-        let verification_data = format!("{}{}{}{}{}", 
-            course_metadata.title, 
-            course_metadata.description, 
-            course_metadata.instructor, 
-            course_metadata.price, 
+        let verification_data = format!(
+            "{}{}{}{}{}",
+            course_metadata.title,
+            course_metadata.description,
+            course_metadata.instructor,
+            course_metadata.price,
             course_metadata.updated_at
         );
         course_metadata.verification_hash = Self::generate_hash(env, verification_data);
 
-        env.storage().instance().set(&CourseMetadataKey::Course(course_id), &course_metadata);
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::Course(course_id), &course_metadata);
         true
     }
 
     /// Verify course authenticity
     pub fn verify_course(env: Env, course_id: String) -> bool {
-        let course_metadata: CourseMetadata = env.storage().instance()
+        let course_metadata: CourseMetadata = env
+            .storage()
+            .instance()
             .get(&CourseMetadataKey::Course(course_id.clone()))
             .unwrap_or_else(|| panic!("Course not found"));
 
         // Recreate verification hash and compare
-        let verification_data = format!("{}{}{}{}{}", 
-            course_metadata.title, 
-            course_metadata.description, 
-            course_metadata.instructor, 
-            course_metadata.price, 
+        let verification_data = format!(
+            "{}{}{}{}{}",
+            course_metadata.title,
+            course_metadata.description,
+            course_metadata.instructor,
+            course_metadata.price,
             course_metadata.updated_at
         );
         let expected_hash = Self::generate_hash(env, verification_data);
@@ -327,14 +374,16 @@ impl CourseMetadataContract {
 
     /// Get course metadata
     pub fn get_course(env: Env, course_id: String) -> CourseMetadata {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&CourseMetadataKey::Course(course_id))
             .unwrap_or_else(|| panic!("Course not found"))
     }
 
     /// Get instructor profile
     pub fn get_instructor_profile(env: Env, instructor: Address) -> InstructorProfile {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&CourseMetadataKey::Instructor(instructor))
             .unwrap_or_else(|| panic!("Instructor profile not found"))
     }
@@ -343,7 +392,7 @@ impl CourseMetadataContract {
     fn create_instructor_profile(env: Env, instructor: Address) {
         let timestamp = env.ledger().timestamp();
         let rating = PackedRating::new(0, 0);
-        
+
         let profile = InstructorProfile {
             address: instructor.clone(),
             name: String::from_str(&env, "Unnamed Instructor"),
@@ -357,7 +406,9 @@ impl CourseMetadataContract {
             created_at: timestamp,
         };
 
-        env.storage().instance().set(&CourseMetadataKey::Instructor(instructor), &profile);
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::Instructor(instructor), &profile);
     }
 
     /// Generate hash for vector data
@@ -390,11 +441,15 @@ impl CourseMetadataContract {
         skills_acquired: Vec<String>,
     ) -> String {
         // Verify course exists
-        let course_metadata: CourseMetadata = env.storage().instance()
+        let course_metadata: CourseMetadata = env
+            .storage()
+            .instance()
             .get(&CourseMetadataKey::Course(course_id.clone()))
             .unwrap_or_else(|| panic!("Course not found"));
 
-        let completion_count: u64 = env.storage().instance()
+        let completion_count: u64 = env
+            .storage()
+            .instance()
             .get(&CourseMetadataKey::CompletionCount)
             .unwrap_or(0);
 
@@ -410,37 +465,52 @@ impl CourseMetadataContract {
             skills_acquired,
         };
 
-        env.storage().instance().set(&CourseMetadataKey::Completion(completion_id.clone()), &completion);
-        env.storage().instance().set(&CourseMetadataKey::CompletionCount, &(completion_count + 1));
+        env.storage().instance().set(
+            &CourseMetadataKey::Completion(completion_id.clone()),
+            &completion,
+        );
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::CompletionCount, &(completion_count + 1));
 
         // Update course enrollment count
         let mut updated_course = course_metadata;
         updated_course.current_enrollments += 1;
-        env.storage().instance().set(&CourseMetadataKey::Course(course_id), &updated_course);
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::Course(course_id), &updated_course);
 
         // Update instructor total students
         let mut instructor_profile = Self::get_instructor_profile(env, updated_course.instructor);
         instructor_profile.total_students += 1;
-        env.storage().instance().set(&CourseMetadataKey::Instructor(updated_course.instructor), &instructor_profile);
+        env.storage().instance().set(
+            &CourseMetadataKey::Instructor(updated_course.instructor),
+            &instructor_profile,
+        );
 
         completion_id
     }
 
     /// Verify course completion
     pub fn verify_completion(env: Env, completion_id: String) -> bool {
-        let mut completion: CourseCompletion = env.storage().instance()
+        let mut completion: CourseCompletion = env
+            .storage()
+            .instance()
             .get(&CourseMetadataKey::Completion(completion_id.clone()))
             .unwrap_or_else(|| panic!("Completion record not found"));
 
         completion.is_verified = true;
-        env.storage().instance().set(&CourseMetadataKey::Completion(completion_id), &completion);
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::Completion(completion_id), &completion);
 
         true
     }
 
     /// Get course completion record
     pub fn get_completion(env: Env, completion_id: String) -> CourseCompletion {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&CourseMetadataKey::Completion(completion_id))
             .unwrap_or_else(|| panic!("Completion record not found"))
     }
@@ -461,14 +531,16 @@ impl CourseMetadataContract {
 
     /// Get total course count
     pub fn get_course_count(env: Env) -> u64 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&CourseMetadataKey::CourseCount)
             .unwrap_or(0)
     }
 
     /// Get total completion count
     pub fn get_completion_count(env: Env) -> u64 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&CourseMetadataKey::CompletionCount)
             .unwrap_or(0)
     }
@@ -490,22 +562,28 @@ impl CourseMetadataContract {
             panic!("Rating must be between 0 and 100");
         }
 
-        let course_metadata: CourseMetadata = env.storage().instance()
+        let course_metadata: CourseMetadata = env
+            .storage()
+            .instance()
             .get(&CourseMetadataKey::Course(course_id.clone()))
             .unwrap_or_else(|| panic!("Course not found"));
 
         // Update packed rating
-        let mut packed_rating: PackedRating = env.storage().instance()
+        let mut packed_rating: PackedRating = env
+            .storage()
+            .instance()
             .get(&CourseMetadataKey::CourseRating(course_id.clone()))
             .unwrap_or_else(|| PackedRating::new(0, 0));
-        
+
         let current_rating = packed_rating.rating_bps();
         let current_count = packed_rating.review_count();
         let new_count = current_count + 1;
         let new_rating = ((current_rating * current_count + rating * 100) / new_count) as u32; // Convert to basis points
-        
+
         packed_rating = PackedRating::new(new_rating, new_count);
-        env.storage().instance().set(&CourseMetadataKey::CourseRating(course_id), &packed_rating);
+        env.storage()
+            .instance()
+            .set(&CourseMetadataKey::CourseRating(course_id), &packed_rating);
         true
     }
 }

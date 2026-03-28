@@ -1,5 +1,5 @@
-use soroban_sdk::{contracttype, Address, Env, String, Vec, Symbol};
-use crate::utils::storage::{StorageUtils, EntityType};
+use crate::utils::storage::{EntityType, StorageUtils};
+use soroban_sdk::{contracttype, Address, Env, String, Symbol, Vec};
 
 /// Optimized credential keys with better organization
 #[contracttype]
@@ -20,7 +20,7 @@ pub struct Credential {
     pub title: String,
     pub description_hash: String, // Hash of description string
     pub course_id: String,
-    pub timestamp: u64,         // Packed completion_date and revocation status
+    pub timestamp: u64, // Packed completion_date and revocation status
     pub ipfs_hash: String,
 }
 
@@ -47,7 +47,7 @@ pub fn issue_credential(
     // Pack timestamp and revocation status
     let timestamp = env.ledger().timestamp();
     let packed_timestamp = timestamp << 1; // Reserve bit 0 for revocation status
-    
+
     // Generate hash for description to save storage space
     let description_hash = Self::generate_string_hash(&description);
 
@@ -63,23 +63,32 @@ pub fn issue_credential(
     };
 
     // Store credential in persistent storage
-    env.storage().persistent().set(&CredentialKey::Credential(credential_id), &credential);
-    
+    env.storage()
+        .persistent()
+        .set(&CredentialKey::Credential(credential_id), &credential);
+
     // Store description separately if needed for verification
-    env.storage().instance().set(&CredentialKey::CredentialMetadata(credential_id), &description);
+    env.storage().instance().set(
+        &CredentialKey::CredentialMetadata(credential_id),
+        &description,
+    );
 
     // Integrate with user profile
     user_profile::add_credential(env, recipient.clone(), credential_id);
 
     // Update credential count
-    env.storage().instance().set(&CredentialKey::CredentialCount, &credential_id);
+    env.storage()
+        .instance()
+        .set(&CredentialKey::CredentialCount, &credential_id);
 
     credential_id
 }
 
 /// Verify a credential using packed timestamp
 pub fn verify_credential(env: &Env, credential_id: u64) -> bool {
-    let mut credential: Credential = env.storage().persistent()
+    let mut credential: Credential = env
+        .storage()
+        .persistent()
         .get(&CredentialKey::Credential(credential_id))
         .unwrap_or_else(|| panic!("Credential not found"));
 
@@ -101,48 +110,60 @@ pub fn revoke_credential(env: &Env, credential_id: u64, revoker: Address) {
         panic!("Only admin can revoke");
     }
 
-    let mut credential: Credential = env.storage().persistent()
+    let mut credential: Credential = env
+        .storage()
+        .persistent()
         .get(&CredentialKey::Credential(credential_id))
         .unwrap_or_else(|| panic!("Credential not found"));
 
     // Set revocation bit (bit 0)
     credential.timestamp |= 1u64;
-    env.storage().persistent().set(&CredentialKey::Credential(credential_id), &credential);
-    
+    env.storage()
+        .persistent()
+        .set(&CredentialKey::Credential(credential_id), &credential);
+
     // Store revocation record
     let revocation_time = env.ledger().timestamp();
-    env.storage().instance().set(&CredentialKey::CredentialRevocations(credential_id), &revocation_time);
+    env.storage().instance().set(
+        &CredentialKey::CredentialRevocations(credential_id),
+        &revocation_time,
+    );
 }
 
 /// Get user credentials with optimized storage
 pub fn get_user_credentials(env: &Env, user: Address) -> Vec<u64> {
-    env.storage().persistent()
+    env.storage()
+        .persistent()
         .get(&CredentialKey::UserCredentials(user))
         .unwrap_or_else(|| Vec::new(env))
 }
 
 /// Get credential details with optional description
 pub fn get_credential(env: &Env, credential_id: u64) -> Credential {
-    env.storage().persistent()
+    env.storage()
+        .persistent()
         .get(&CredentialKey::Credential(credential_id))
         .unwrap_or_else(|| panic!("Credential not found"))
 }
 
 /// Get credential description if needed
 pub fn get_credential_description(env: &Env, credential_id: u64) -> Option<String> {
-    env.storage().instance()
+    env.storage()
+        .instance()
         .get(&CredentialKey::CredentialMetadata(credential_id))
 }
 
 /// Get credential revocation time
 pub fn get_credential_revocation_time(env: &Env, credential_id: u64) -> Option<u64> {
-    env.storage().instance()
+    env.storage()
+        .instance()
         .get(&CredentialKey::CredentialRevocations(credential_id))
 }
 
 /// Get credential count with optimized storage
 pub fn get_credential_count(env: &Env) -> u64 {
-    env.storage().instance()
+    env.storage()
+        .instance()
         .get(&CredentialKey::CredentialCount)
         .unwrap_or(0)
 }

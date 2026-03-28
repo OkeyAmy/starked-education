@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { saveOfflineProgress } from '../../utils/offlineDB';
 
 interface InteractiveQuizProps {
   quizId: string;
@@ -94,6 +96,7 @@ const InteractiveQuiz: React.FC<InteractiveQuizProps> = ({
   const [currentFeedback, setCurrentFeedback] = useState<string>('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(timeLimit ? timeLimit * 60 : null);
+  const { isOnline } = useNetworkStatus();
 
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
@@ -218,7 +221,7 @@ const InteractiveQuiz: React.FC<InteractiveQuizProps> = ({
     }
   }, [currentQuestionIndex]);
 
-  const handleSubmitQuiz = useCallback(() => {
+  const handleSubmitQuiz = useCallback(async () => {
     const results: QuizResults = {
       quizId,
       userId: 'current-user', // Would come from auth context
@@ -258,6 +261,14 @@ const InteractiveQuiz: React.FC<InteractiveQuizProps> = ({
     };
 
     results.percentage = (results.score / results.maxScore) * 100;
+
+    // Offline-first capability: Save locally and trigger background sync if offline
+    if (!isOnline) {
+      await saveOfflineProgress(`quiz-${quizId}-${Date.now()}`, results).catch(console.error);
+    } else {
+      // Standard API sync would go here if online
+    }
+
     setQuizResults(results);
     setShowResults(true);
     setIsSubmitted(true);
@@ -444,6 +455,14 @@ const InteractiveQuiz: React.FC<InteractiveQuizProps> = ({
         <p className="text-gray-600">{description}</p>
       </div>
 
+      {/* Offline Mode Indicator */}
+      {!isOnline && (
+        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded" role="alert">
+          <p className="font-bold text-sm">Offline Mode</p>
+          <p className="text-sm">You are currently offline. Your quiz progress will be saved locally and will sync automatically when you reconnect.</p>
+        </div>
+      )}
+
       {/* Progress Bar */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
@@ -579,7 +598,7 @@ const InteractiveQuiz: React.FC<InteractiveQuizProps> = ({
               onClick={handleSubmitQuiz}
               className="px-8 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
             >
-              Submit Quiz
+              {isOnline ? 'Submit Quiz' : 'Submit & Save Offline'}
             </motion.button>
           ) : (
             <motion.button

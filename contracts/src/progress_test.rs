@@ -1,7 +1,10 @@
 #![cfg(test)]
 
 use crate::progress::{CourseProgressContract, CourseProgressContractClient};
-use soroban_sdk::{Env, testutils::{Address as _, Ledger}, Address, String};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env, String,
+};
 
 #[test]
 fn test_progress_tracking() {

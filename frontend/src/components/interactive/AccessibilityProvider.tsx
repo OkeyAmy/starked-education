@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface AccessibilityFeaturesProps {
   children: React.ReactNode;
@@ -59,6 +60,7 @@ const AccessibilityProvider: React.FC<AccessibilityFeaturesProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [focusedElement, setFocusedElement] = useState<HTMLElement | null>(null);
+  const modalRef = useFocusTrap(showSettings);
 
   // Apply settings to document
   useEffect(() => {
@@ -304,11 +306,14 @@ const AccessibilityProvider: React.FC<AccessibilityFeaturesProps> = ({
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" 
+             role="dialog" 
+             aria-modal="true" 
+             aria-labelledby="accessibility-settings-title">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" ref={modalRef}>
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Accessibility Settings</h2>
+                <h2 id="accessibility-settings-title" className="text-2xl font-bold text-gray-800">Accessibility Settings</h2>
                 <button
                   onClick={() => setShowSettings(false)}
                   className="text-gray-500 hover:text-gray-700"

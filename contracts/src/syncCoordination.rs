@@ -1,5 +1,7 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String, Vec, Map, Symbol, U256};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, Address, Env, Map, String, Symbol, Vec, U256,
+};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -57,8 +59,8 @@ pub struct SyncEntry {
     pub sync_status: SyncStatus,
     pub conflict_resolution: Option<ConflictResolution>,
     pub parent_entry_id: Option<String>, // For conflict resolution
-    pub merged_with: Vec<String>, // Entry IDs this was merged with
-    pub payload: String, // Actual data (simplified - in production use IPFS)
+    pub merged_with: Vec<String>,        // Entry IDs this was merged with
+    pub payload: String,                 // Actual data (simplified - in production use IPFS)
 }
 
 #[contracttype]
@@ -114,12 +116,22 @@ impl SyncCoordinationContract {
         if env.storage().instance().has(&SyncCoordinationKey::Admin) {
             panic!("Contract already initialized");
         }
-        
-        env.storage().instance().set(&SyncCoordinationKey::Admin, &admin);
-        env.storage().instance().set(&SyncCoordinationKey::DeviceCount, &0u64);
-        env.storage().instance().set(&SyncCoordinationKey::EntryCount, &0u64);
-        env.storage().instance().set(&SyncCoordinationKey::ConflictCount, &0u64);
-        env.storage().instance().set(&SyncCoordinationKey::SessionCount, &0u64);
+
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::Admin, &admin);
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::DeviceCount, &0u64);
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::EntryCount, &0u64);
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::ConflictCount, &0u64);
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::SessionCount, &0u64);
     }
 
     /// Register a new device for a user
@@ -130,13 +142,15 @@ impl SyncCoordinationContract {
         name: String,
         capabilities: Vec<String>,
     ) -> String {
-        let device_count: u64 = env.storage().instance()
+        let device_count: u64 = env
+            .storage()
+            .instance()
             .get(&SyncCoordinationKey::DeviceCount)
             .unwrap_or(0);
-        
+
         let device_id = format!("device_{}", device_count + 1);
         let timestamp = env.ledger().timestamp();
-        
+
         let device = Device {
             id: device_id.clone(),
             user_address: user_address.clone(),
@@ -150,23 +164,26 @@ impl SyncCoordinationContract {
             sync_version: 1,
         };
 
-        env.storage().instance().set(&SyncCoordinationKey::Device(device_id.clone()), &device);
-        env.storage().instance().set(&SyncCoordinationKey::DeviceCount, &(device_count + 1));
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::Device(device_id.clone()), &device);
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::DeviceCount, &(device_count + 1));
 
         // Add to user's device list
         let mut user_devices = Self::get_user_devices(env, user_address.clone());
         user_devices.push_back(device_id.clone());
-        env.storage().instance().set(&SyncCoordinationKey::UserDevices(user_address), &user_devices);
+        env.storage().instance().set(
+            &SyncCoordinationKey::UserDevices(user_address),
+            &user_devices,
+        );
 
         device_id
     }
 
     /// Start a sync session
-    pub fn start_sync_session(
-        env: Env,
-        user_address: Address,
-        device_id: String,
-    ) -> String {
+    pub fn start_sync_session(env: Env, user_address: Address, device_id: String) -> String {
         // Verify device exists and belongs to user
         let device = Self::get_device(env, device_id.clone());
         if device.user_address != user_address {
@@ -177,10 +194,12 @@ impl SyncCoordinationContract {
             panic!("Device is not active");
         }
 
-        let session_count: u64 = env.storage().instance()
+        let session_count: u64 = env
+            .storage()
+            .instance()
             .get(&SyncCoordinationKey::SessionCount)
             .unwrap_or(0);
-        
+
         let session_id = format!("session_{}", session_count + 1);
         let timestamp = env.ledger().timestamp();
 
@@ -196,13 +215,20 @@ impl SyncCoordinationContract {
             error_message: None,
         };
 
-        env.storage().instance().set(&SyncCoordinationKey::SyncSession(session_id.clone()), &session);
-        env.storage().instance().set(&SyncCoordinationKey::SessionCount, &(session_count + 1));
+        env.storage().instance().set(
+            &SyncCoordinationKey::SyncSession(session_id.clone()),
+            &session,
+        );
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::SessionCount, &(session_count + 1));
 
         // Update device last seen
         let mut updated_device = device;
         updated_device.last_seen = timestamp;
-        env.storage().instance().set(&SyncCoordinationKey::Device(device_id), &updated_device);
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::Device(device_id), &updated_device);
 
         session_id
     }
@@ -228,13 +254,15 @@ impl SyncCoordinationContract {
             session.user_address.clone(),
             data_type.clone(),
             data_hash.clone(),
-            env.ledger().timestamp()
+            env.ledger().timestamp(),
         );
 
-        let entry_count: u64 = env.storage().instance()
+        let entry_count: u64 = env
+            .storage()
+            .instance()
             .get(&SyncCoordinationKey::EntryCount)
             .unwrap_or(0);
-        
+
         let entry_id = format!("entry_{}", entry_count + 1);
         let timestamp = env.ledger().timestamp();
 
@@ -245,15 +273,24 @@ impl SyncCoordinationContract {
             data_type: data_type.clone(),
             data_hash: data_hash.clone(),
             timestamp,
-            sync_status: if conflict_id.is_some() { SyncStatus::Conflict } else { SyncStatus::Completed },
+            sync_status: if conflict_id.is_some() {
+                SyncStatus::Conflict
+            } else {
+                SyncStatus::Completed
+            },
             conflict_resolution: None, // Will be set during conflict resolution
             parent_entry_id: None,
             merged_with: Vec::new(&env),
             payload,
         };
 
-        env.storage().instance().set(&SyncCoordinationKey::SyncEntry(entry_id.clone()), &sync_entry);
-        env.storage().instance().set(&SyncCoordinationKey::EntryCount, &(entry_count + 1));
+        env.storage().instance().set(
+            &SyncCoordinationKey::SyncEntry(entry_id.clone()),
+            &sync_entry,
+        );
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::EntryCount, &(entry_count + 1));
 
         // Update session
         let mut updated_session = session;
@@ -261,7 +298,10 @@ impl SyncCoordinationContract {
         if conflict_id.is_some() {
             updated_session.conflicts_resolved += 1;
         }
-        env.storage().instance().set(&SyncCoordinationKey::SyncSession(session_id), &updated_session);
+        env.storage().instance().set(
+            &SyncCoordinationKey::SyncSession(session_id),
+            &updated_session,
+        );
 
         entry_id
     }
@@ -275,9 +315,11 @@ impl SyncCoordinationContract {
         resolver: Address,
     ) -> bool {
         let mut conflict = Self::get_sync_conflict(env, conflict_id.clone());
-        
+
         // Verify resolver is authorized (admin or conflict owner)
-        let admin: Address = env.storage().instance()
+        let admin: Address = env
+            .storage()
+            .instance()
             .get(&SyncCoordinationKey::Admin)
             .unwrap_or_else(|| panic!("Admin not found"));
 
@@ -290,23 +332,23 @@ impl SyncCoordinationContract {
             ConflictResolution::LastWriteWins => {
                 // Keep the entry with latest timestamp
                 Self::apply_last_write_wins(env, &conflict, winning_entry_id);
-            },
+            }
             ConflictResolution::FirstWriteWins => {
                 // Keep the entry with earliest timestamp
                 Self::apply_first_write_wins(env, &conflict, winning_entry_id);
-            },
+            }
             ConflictResolution::TimestampWins => {
                 // Use timestamp as tiebreaker
                 Self::apply_timestamp_wins(env, &conflict, winning_entry_id);
-            },
+            }
             ConflictResolution::ManualReview => {
                 // Mark for manual review
                 Self::apply_manual_review(env, &conflict, winning_entry_id);
-            },
+            }
             ConflictResolution::MergeData => {
                 // Attempt to merge conflicting entries
                 Self::apply_merge_data(env, &conflict, winning_entry_id);
-            },
+            }
         }
 
         // Update conflict record
@@ -315,7 +357,9 @@ impl SyncCoordinationContract {
         conflict.resolved_by = Some(resolver.clone());
         conflict.winning_entry_id = Some(winning_entry_id);
 
-        env.storage().instance().set(&SyncCoordinationKey::SyncConflict(conflict_id), &conflict);
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::SyncConflict(conflict_id), &conflict);
 
         true
     }
@@ -328,57 +372,70 @@ impl SyncCoordinationContract {
         error_message: Option<String>,
     ) -> bool {
         let mut session = Self::get_sync_session(env, session_id.clone());
-        
+
         if session.status != SyncStatus::InProgress {
             panic!("Session is not in progress");
         }
 
         session.completed_at = Some(env.ledger().timestamp());
-        session.status = if success { SyncStatus::Completed } else { SyncStatus::Failed };
+        session.status = if success {
+            SyncStatus::Completed
+        } else {
+            SyncStatus::Failed
+        };
         session.error_message = error_message;
 
-        env.storage().instance().set(&SyncCoordinationKey::SyncSession(session_id), &session);
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::SyncSession(session_id), &session);
 
         // Update device last sync
         let mut device = Self::get_device(env, session.device_id.clone());
         device.last_sync = env.ledger().timestamp();
         device.sync_version += 1;
-        env.storage().instance().set(&SyncCoordinationKey::Device(session.device_id), &device);
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::Device(session.device_id), &device);
 
         true
     }
 
     /// Get device information
     pub fn get_device(env: Env, device_id: String) -> Device {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&SyncCoordinationKey::Device(device_id))
             .unwrap_or_else(|| panic!("Device not found"))
     }
 
     /// Get sync session
     pub fn get_sync_session(env: Env, session_id: String) -> SyncSession {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&SyncCoordinationKey::SyncSession(session_id))
             .unwrap_or_else(|| panic!("Sync session not found"))
     }
 
     /// Get sync entry
     pub fn get_sync_entry(env: Env, entry_id: String) -> SyncEntry {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&SyncCoordinationKey::SyncEntry(entry_id))
             .unwrap_or_else(|| panic!("Sync entry not found"))
     }
 
     /// Get sync conflict
     pub fn get_sync_conflict(env: Env, conflict_id: String) -> SyncConflict {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&SyncCoordinationKey::SyncConflict(conflict_id))
             .unwrap_or_else(|| panic!("Sync conflict not found"))
     }
 
     /// Get user's devices
     pub fn get_user_devices(env: Env, user_address: Address) -> Vec<String> {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&SyncCoordinationKey::UserDevices(user_address))
             .unwrap_or_else(|| Vec::new(&env))
     }
@@ -400,15 +457,17 @@ impl SyncCoordinationContract {
     /// Deactivate a device
     pub fn deactivate_device(env: Env, user_address: Address, device_id: String) -> bool {
         let mut device = Self::get_device(env, device_id.clone());
-        
+
         if device.user_address != user_address {
             panic!("Device does not belong to user");
         }
 
         device.is_active = false;
         device.last_seen = env.ledger().timestamp();
-        
-        env.storage().instance().set(&SyncCoordinationKey::Device(device_id), &device);
+
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::Device(device_id), &device);
         true
     }
 
@@ -420,15 +479,17 @@ impl SyncCoordinationContract {
         capabilities: Vec<String>,
     ) -> bool {
         let mut device = Self::get_device(env, device_id.clone());
-        
+
         if device.user_address != user_address {
             panic!("Device does not belong to user");
         }
 
         device.capabilities = capabilities;
         device.last_seen = env.ledger().timestamp();
-        
-        env.storage().instance().set(&SyncCoordinationKey::Device(device_id), &device);
+
+        env.storage()
+            .instance()
+            .set(&SyncCoordinationKey::Device(device_id), &device);
         true
     }
 
@@ -453,7 +514,10 @@ impl SyncCoordinationContract {
         let mut updated_entry = winning_entry;
         updated_entry.sync_status = SyncStatus::Completed;
         updated_entry.conflict_resolution = Some(ConflictResolution::LastWriteWins);
-        env.storage().instance().set(&SyncCoordinationKey::SyncEntry(winning_entry_id), &updated_entry);
+        env.storage().instance().set(
+            &SyncCoordinationKey::SyncEntry(winning_entry_id),
+            &updated_entry,
+        );
     }
 
     /// Apply first-write-wins resolution
@@ -462,7 +526,10 @@ impl SyncCoordinationContract {
         let mut updated_entry = winning_entry;
         updated_entry.sync_status = SyncStatus::Completed;
         updated_entry.conflict_resolution = Some(ConflictResolution::FirstWriteWins);
-        env.storage().instance().set(&SyncCoordinationKey::SyncEntry(winning_entry_id), &updated_entry);
+        env.storage().instance().set(
+            &SyncCoordinationKey::SyncEntry(winning_entry_id),
+            &updated_entry,
+        );
     }
 
     /// Apply timestamp-wins resolution
@@ -471,7 +538,10 @@ impl SyncCoordinationContract {
         let mut updated_entry = winning_entry;
         updated_entry.sync_status = SyncStatus::Completed;
         updated_entry.conflict_resolution = Some(ConflictResolution::TimestampWins);
-        env.storage().instance().set(&SyncCoordinationKey::SyncEntry(winning_entry_id), &updated_entry);
+        env.storage().instance().set(
+            &SyncCoordinationKey::SyncEntry(winning_entry_id),
+            &updated_entry,
+        );
     }
 
     /// Apply manual review resolution
@@ -480,50 +550,62 @@ impl SyncCoordinationContract {
         let mut updated_entry = winning_entry;
         updated_entry.sync_status = SyncStatus::Pending; // Requires manual review
         updated_entry.conflict_resolution = Some(ConflictResolution::ManualReview);
-        env.storage().instance().set(&SyncCoordinationKey::SyncEntry(winning_entry_id), &updated_entry);
+        env.storage().instance().set(
+            &SyncCoordinationKey::SyncEntry(winning_entry_id),
+            &updated_entry,
+        );
     }
 
     /// Apply merge data resolution
     fn apply_merge_data(env: Env, conflict: &SyncConflict, winning_entry_id: String) {
         let winning_entry = Self::get_sync_entry(env, winning_entry_id.clone());
         let other_entry = Self::get_sync_entry(env, conflict.entry_id_2.clone());
-        
+
         // Simple merge: combine payloads
         let merged_payload = format!("{}|{}", winning_entry.payload, other_entry.payload);
-        
+
         let mut updated_entry = winning_entry;
         updated_entry.payload = merged_payload;
         updated_entry.sync_status = SyncStatus::Completed;
         updated_entry.conflict_resolution = Some(ConflictResolution::MergeData);
-        updated_entry.merged_with.push_back(conflict.entry_id_2.clone());
-        
-        env.storage().instance().set(&SyncCoordinationKey::SyncEntry(winning_entry_id), &updated_entry);
+        updated_entry
+            .merged_with
+            .push_back(conflict.entry_id_2.clone());
+
+        env.storage().instance().set(
+            &SyncCoordinationKey::SyncEntry(winning_entry_id),
+            &updated_entry,
+        );
     }
 
     /// Get total device count
     pub fn get_device_count(env: Env) -> u64 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&SyncCoordinationKey::DeviceCount)
             .unwrap_or(0)
     }
 
     /// Get total entry count
     pub fn get_entry_count(env: Env) -> u64 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&SyncCoordinationKey::EntryCount)
             .unwrap_or(0)
     }
 
     /// Get total conflict count
     pub fn get_conflict_count(env: Env) -> u64 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&SyncCoordinationKey::ConflictCount)
             .unwrap_or(0)
     }
 
     /// Get total session count
     pub fn get_session_count(env: Env) -> u64 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&SyncCoordinationKey::SessionCount)
             .unwrap_or(0)
     }

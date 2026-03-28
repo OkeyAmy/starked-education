@@ -13,6 +13,7 @@ import {
 } from '../models/Course';
 import logger from '../utils/logger';
 import { AISearchService } from './search/AISearchService';
+import elasticsearchService from './search/ElasticsearchService';
 
 interface CourseDatabase {
   [id: string]: Course;
@@ -58,6 +59,41 @@ export class SearchService {
   ): Promise<SearchResult> {
     try {
       logger.info(`Search initiated - Query: ${query}, AI: ${enableAISearch}, Filters:`, filters);
+
+      // Try Elasticsearch first if enabled via env
+      if (process.env.ELASTICSEARCH_ENABLED === 'true') {
+        try {
+          const page = filters.page || 1;
+          const limit = filters.limit || 10;
+          const from = (page - 1) * limit;
+          
+          const esResults = await elasticsearchService.searchCourses(query, filters, from, limit);
+          
+          const searchResult: SearchResult = {
+            courses: esResults.hits, // Note: would normally map back to full Course objects from DB
+            total: esResults.total,
+            page,
+            limit,
+            hasMore: from + limit < esResults.total
+          };
+
+          await this.recordSearchAnalytics({
+            id: `analytics_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            query: query.toLowerCase().trim(),
+            filters,
+            resultCount: searchResult.total,
+            timestamp: new Date(),
+            userId,
+            sessionId,
+            resultsClicked: []
+          });
+
+          logger.info(`Elasticsearch completed - Found ${searchResult.total} courses`);
+          return searchResult;
+        } catch (esError) {
+          logger.warn('Elasticsearch failed, falling back to AI/traditional search:', esError);
+        }
+      }
 
       // Use AI search if enabled and available
       if (enableAISearch && this.shouldUseAISearch(query, filters)) {
@@ -519,6 +555,14 @@ export class SearchService {
    */
   async getAISuggestions(query: string, userId?: string, limit: number = 5): Promise<string[]> {
     try {
+      // Try Elasticsearch first if enabled
+      if (process.env.ELASTICSEARCH_ENABLED === 'true') {
+        const esSuggestions = await elasticsearchService.getSuggestions(query);
+        if (esSuggestions && esSuggestions.length > 0) {
+          return esSuggestions.slice(0, limit);
+        }
+      }
+
       return await this.aiSearchService.getSuggestions(query, userId, limit);
     } catch (error) {
       logger.error('Error getting AI suggestions', error);

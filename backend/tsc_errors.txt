@@ -1,0 +1,6 @@
+error TS2688: Cannot find type definition file for 'axios'.
+  The file is in the program because:
+    Entry point for implicit type library 'axios'
+error TS2688: Cannot find type definition file for 'sharp'.
+  The file is in the program because:
+    Entry point for implicit type library 'sharp'

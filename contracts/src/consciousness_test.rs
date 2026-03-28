@@ -1,6 +1,8 @@
+use crate::consciousness::{
+    ConsciousnessContract, ConsciousnessData, ConsciousnessInterface, ContinuityProof,
+};
 use soroban_sdk::Env;
-use crate::consciousness::{ConsciousnessContract, ConsciousnessData, ContinuityProof, ConsciousnessInterface};
-use soroban_sdk::{Address, Bytes, Vec, Map};
+use soroban_sdk::{Address, Bytes, Map, Vec};
 
 #[test]
 fn test_consciousness_upload_and_verification() {
@@ -54,11 +56,8 @@ fn test_consciousness_transfer() {
     let transfer_proof = Bytes::from_slice(&env, b"transfer_proof");
 
     // Transfer consciousness
-    let transfer_success = client.transfer_consciousness(
-        &consciousness_id,
-        &new_owner,
-        &transfer_proof,
-    );
+    let transfer_success =
+        client.transfer_consciousness(&consciousness_id, &new_owner, &transfer_proof);
 
     assert!(transfer_success);
 
@@ -69,7 +68,7 @@ fn test_consciousness_transfer() {
     // Verify ownership lists updated
     let original_owned = client.get_owned_consciousnesses(&original_owner);
     let new_owned = client.get_owned_consciousnesses(&new_owner);
-    
+
     assert!(original_owned.is_empty());
     assert_eq!(new_owned.len(), 1);
     assert_eq!(new_owned.get(0).unwrap(), consciousness_id);
@@ -113,7 +112,7 @@ fn test_continuity_proof_creation() {
     // Verify both consciousnesses exist
     let first_metadata = client.get_consciousness_metadata(&first_consciousness_id);
     let second_metadata = client.get_consciousness_metadata(&second_consciousness_id);
-    
+
     assert_eq!(first_metadata.evolution_stage, 1);
     assert_eq!(second_metadata.evolution_stage, 1);
     assert_eq!(second_metadata.encoding_version, encoding_version + 1);
@@ -142,21 +141,14 @@ fn test_marketplace_listing_and_purchase() {
     );
 
     // List on marketplace
-    let listing_success = client.list_on_marketplace(
-        &consciousness_id,
-        &price,
-        &access_duration,
-        &license_type,
-    );
+    let listing_success =
+        client.list_on_marketplace(&consciousness_id, &price, &access_duration, &license_type);
     assert!(listing_success);
 
     // Purchase access
     let payment_proof = Bytes::from_slice(&env, b"payment_proof");
-    let purchase_success = client.purchase_consciousness_access(
-        &consciousness_id,
-        &buyer,
-        &payment_proof,
-    );
+    let purchase_success =
+        client.purchase_consciousness_access(&consciousness_id, &buyer, &payment_proof);
     assert!(purchase_success);
 }
 
@@ -224,11 +216,11 @@ fn test_nonexistent_consciousness() {
     let client = ConsciousnessContract::new(&env, &contract_id);
 
     let fake_consciousness_id = Bytes::from_slice(&env, b"fake_consciousness");
-    
+
     // Should panic when trying to get metadata for non-existent consciousness
     let result = std::panic::catch_unwind(|| {
         client.get_consciousness_metadata(&fake_consciousness_id);
     });
-    
+
     assert!(result.is_err());
 }

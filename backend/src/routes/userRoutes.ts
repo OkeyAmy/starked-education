@@ -1,8 +1,8 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import { body, param, validationResult } from 'express-validator';
-import { userController } from '../controllers/userController';
+import { Router, Request, Response, NextFunction } from "express";
+import { body, param, validationResult } from "express-validator";
+import { userController } from "../controllers/userController";
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * Validation middleware
@@ -20,10 +20,10 @@ const validateRequest = (req: Request, res: Response, next: NextFunction) => {
  * @desc Get user profile by Stellar address
  */
 router.get(
-  '/profile/:address',
-  [param('address').isString().notEmpty().withMessage('Address is required')],
+  "/profile/:address",
+  [param("address").isString().notEmpty().withMessage("Address is required")],
   validateRequest,
-  userController.getProfile
+  userController.getProfile,
 );
 
 /**
@@ -31,15 +31,15 @@ router.get(
  * @desc Update user profile
  */
 router.put(
-  '/profile/:address',
+  "/profile/:address",
   [
-    param('address').isString().notEmpty(),
-    body('username').optional().isString().trim().isLength({ min: 3 }),
-    body('email').optional().isEmail(),
-    body('bio').optional().isString().isLength({ max: 500 }),
+    param("address").isString().notEmpty(),
+    body("username").optional().isString().trim().isLength({ min: 3 }),
+    body("email").optional().isEmail(),
+    body("bio").optional().isString().isLength({ max: 500 }),
   ],
   validateRequest,
-  userController.updateProfile
+  userController.updateProfile,
 );
 
 /**
@@ -47,10 +47,10 @@ router.put(
  * @desc Get user settings
  */
 router.get(
-  '/settings/:userId',
-  [param('userId').isString().notEmpty()],
+  "/settings/:userId",
+  [param("userId").isString().notEmpty()],
   validateRequest,
-  userController.getSettings
+  userController.getSettings,
 );
 
 /**
@@ -58,13 +58,13 @@ router.get(
  * @desc Update user settings
  */
 router.put(
-  '/settings/:userId',
-  [param('userId').isString().notEmpty(), body().isObject()],
+  "/settings/:userId",
+  [param("userId").isString().notEmpty(), body().isObject()],
   validateRequest,
-  userController.updateSettings
+  userController.updateSettings,
 );
 
-router.get('/profile/:address/achievements', userController.getAchievements);
-router.get('/profile/:address/stats', userController.getStats);
+router.get("/profile/:address/achievements", userController.getAchievements);
+router.get("/profile/:address/stats", userController.getStats);
 
 export default router;

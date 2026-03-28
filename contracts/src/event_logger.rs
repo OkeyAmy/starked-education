@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String, Vec, symbol_short};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String, Vec};
 
 #[contracttype]
 #[derive(Clone)]
@@ -42,7 +42,7 @@ impl EventLoggerContract {
         if env.storage().instance().has(&EventKey::EventCount) {
             panic!("Contract already initialized");
         }
-        
+
         env.storage().instance().set(&EventKey::EventCount, &0u64);
     }
 
@@ -54,7 +54,7 @@ impl EventLoggerContract {
         metadata: String,
     ) -> u64 {
         user.require_auth();
-        
+
         let event_id = Self::create_event(
             env.clone(),
             EventType::CourseCompletion,
@@ -64,13 +64,13 @@ impl EventLoggerContract {
             None,
             metadata,
         );
-        
+
         // Create notification for course completion
         env.events().publish(
             (symbol_short!("course"), symbol_short!("completed")),
-            (user, event_id)
+            (user, event_id),
         );
-        
+
         event_id
     }
 
@@ -84,7 +84,7 @@ impl EventLoggerContract {
     ) -> u64 {
         // In production, require admin auth
         // user.require_auth();
-        
+
         let event_id = Self::create_event(
             env.clone(),
             EventType::CredentialIssuance,
@@ -94,13 +94,13 @@ impl EventLoggerContract {
             None,
             metadata,
         );
-        
+
         // Create notification for credential issuance
         env.events().publish(
             (symbol_short!("cred"), symbol_short!("issued")),
-            (user, credential_id, event_id)
+            (user, credential_id, event_id),
         );
-        
+
         event_id
     }
 
@@ -112,7 +112,7 @@ impl EventLoggerContract {
         metadata: String,
     ) -> u64 {
         user.require_auth();
-        
+
         let event_id = Self::create_event(
             env.clone(),
             EventType::UserAchievement,
@@ -122,24 +122,20 @@ impl EventLoggerContract {
             Some(achievement_type),
             metadata,
         );
-        
+
         // Create notification for achievement
         env.events().publish(
             (symbol_short!("ach"), symbol_short!("earn")),
-            (user, event_id)
+            (user, event_id),
         );
-        
+
         event_id
     }
 
     /// Log a profile update event
-    pub fn log_profile_update(
-        env: Env,
-        user: Address,
-        metadata: String,
-    ) -> u64 {
+    pub fn log_profile_update(env: Env, user: Address, metadata: String) -> u64 {
         user.require_auth();
-        
+
         let event_id = Self::create_event(
             env.clone(),
             EventType::ProfileUpdate,
@@ -149,7 +145,7 @@ impl EventLoggerContract {
             None,
             metadata,
         );
-        
+
         event_id
     }
 
@@ -161,7 +157,7 @@ impl EventLoggerContract {
         metadata: String,
     ) -> u64 {
         user.require_auth();
-        
+
         let event_id = Self::create_event(
             env.clone(),
             EventType::CourseEnrollment,
@@ -171,7 +167,7 @@ impl EventLoggerContract {
             None,
             metadata,
         );
-        
+
         event_id
     }
 
@@ -182,67 +178,74 @@ impl EventLoggerContract {
 
     /// Get all events for a user
     pub fn get_user_events(env: Env, user: Address) -> Vec<EventLog> {
-        let event_ids: Vec<u64> = env.storage().instance()
+        let event_ids: Vec<u64> = env
+            .storage()
+            .instance()
             .get(&EventKey::UserEvents(user))
             .unwrap_or_else(|| Vec::new(&env));
-        
+
         let mut events = Vec::new(&env);
         for event_id in event_ids.iter() {
             if let Some(event) = Self::get_event(env.clone(), event_id) {
                 events.push_back(event);
             }
         }
-        
+
         events
     }
 
     /// Get all events of a specific type
     pub fn get_events_by_type(env: Env, event_type: EventType) -> Vec<EventLog> {
-        let event_ids: Vec<u64> = env.storage().instance()
+        let event_ids: Vec<u64> = env
+            .storage()
+            .instance()
             .get(&EventKey::EventTypeEvents(event_type.clone()))
             .unwrap_or_else(|| Vec::new(&env));
-        
+
         let mut events = Vec::new(&env);
         for event_id in event_ids.iter() {
             if let Some(event) = Self::get_event(env.clone(), event_id) {
                 events.push_back(event);
             }
         }
-        
+
         events
     }
 
     /// Get recent events with pagination
     pub fn get_recent_events(env: Env, limit: u32, offset: u32) -> Vec<EventLog> {
-        let total_events: u64 = env.storage().instance()
+        let total_events: u64 = env
+            .storage()
+            .instance()
             .get(&EventKey::EventCount)
             .unwrap_or(0);
-        
+
         let mut events = Vec::new(&env);
-        let start = if total_events > offset as u64 { 
-            total_events - offset as u64 
-        } else { 
-            0 
+        let start = if total_events > offset as u64 {
+            total_events - offset as u64
+        } else {
+            0
         };
-        
-        let end = if start > limit as u64 { 
-            start - limit as u64 
-        } else { 
-            0 
+
+        let end = if start > limit as u64 {
+            start - limit as u64
+        } else {
+            0
         };
-        
+
         for i in (end..start).rev() {
             if let Some(event) = Self::get_event(env.clone(), i + 1) {
                 events.push_back(event);
             }
         }
-        
+
         events
     }
 
     /// Get total event count
     pub fn get_event_count(env: Env) -> u64 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&EventKey::EventCount)
             .unwrap_or(0)
     }
@@ -257,11 +260,13 @@ impl EventLoggerContract {
         achievement_type: Option<String>,
         metadata: String,
     ) -> u64 {
-        let count: u64 = env.storage().instance()
+        let count: u64 = env
+            .storage()
+            .instance()
             .get(&EventKey::EventCount)
             .unwrap_or(0);
         let event_id = count + 1;
-        
+
         let event = EventLog {
             id: event_id,
             event_type: event_type.clone(),
@@ -272,25 +277,37 @@ impl EventLoggerContract {
             achievement_type,
             metadata,
         };
-        
+
         // Store the event
-        env.storage().instance().set(&EventKey::Event(event_id), &event);
-        env.storage().instance().set(&EventKey::EventCount, &event_id);
-        
+        env.storage()
+            .instance()
+            .set(&EventKey::Event(event_id), &event);
+        env.storage()
+            .instance()
+            .set(&EventKey::EventCount, &event_id);
+
         // Update user's event list
-        let mut user_events: Vec<u64> = env.storage().instance()
+        let mut user_events: Vec<u64> = env
+            .storage()
+            .instance()
             .get(&EventKey::UserEvents(user.clone()))
             .unwrap_or_else(|| Vec::new(&env));
         user_events.push_back(event_id);
-        env.storage().instance().set(&EventKey::UserEvents(user), &user_events);
-        
+        env.storage()
+            .instance()
+            .set(&EventKey::UserEvents(user), &user_events);
+
         // Update event type list
-        let mut type_events: Vec<u64> = env.storage().instance()
+        let mut type_events: Vec<u64> = env
+            .storage()
+            .instance()
             .get(&EventKey::EventTypeEvents(event_type.clone()))
             .unwrap_or_else(|| Vec::new(&env));
         type_events.push_back(event_id);
-        env.storage().instance().set(&EventKey::EventTypeEvents(event_type), &type_events);
-        
+        env.storage()
+            .instance()
+            .set(&EventKey::EventTypeEvents(event_type), &type_events);
+
         event_id
     }
 }

@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contracttype, Address, Env, String, Vec, Symbol, U256};
+use soroban_sdk::{contracttype, Address, Env, String, Symbol, Vec, U256};
 
 /// Bit-packed storage utilities for gas optimization
 #[contracttype]
@@ -15,14 +15,24 @@ pub struct PackedUserFlags {
 impl PackedUserFlags {
     pub fn new(privacy_level: u8, verified: bool, active: bool) -> Self {
         let mut flags = privacy_level & 0x03;
-        if verified { flags |= 0x04; }
-        if active { flags |= 0x08; }
+        if verified {
+            flags |= 0x04;
+        }
+        if active {
+            flags |= 0x08;
+        }
         Self { flags }
     }
 
-    pub fn privacy_level(&self) -> u8 { self.flags & 0x03 }
-    pub fn is_verified(&self) -> bool { (self.flags & 0x04) != 0 }
-    pub fn is_active(&self) -> bool { (self.flags & 0x08) != 0 }
+    pub fn privacy_level(&self) -> u8 {
+        self.flags & 0x03
+    }
+    pub fn is_verified(&self) -> bool {
+        (self.flags & 0x04) != 0
+    }
+    pub fn is_active(&self) -> bool {
+        (self.flags & 0x08) != 0
+    }
 }
 
 /// Packed timestamps and small integers
@@ -41,8 +51,12 @@ impl PackedTimestamps {
         Self { packed }
     }
 
-    pub fn created_at(&self) -> u64 { (self.packed >> 32).to_u32() as u64 }
-    pub fn updated_at(&self) -> u64 { (self.packed & U256::from_u32(u32::MAX)).to_u32() as u64 }
+    pub fn created_at(&self) -> u64 {
+        (self.packed >> 32).to_u32() as u64
+    }
+    pub fn updated_at(&self) -> u64 {
+        (self.packed & U256::from_u32(u32::MAX)).to_u32() as u64
+    }
 }
 
 /// Packed rating data (rating and review count in single u64)
@@ -60,8 +74,12 @@ impl PackedRating {
         Self { packed }
     }
 
-    pub fn rating_bps(&self) -> u32 { (self.packed >> 32) as u32 }
-    pub fn review_count(&self) -> u32 { (self.packed & 0xFFFFFFFF) as u32 }
+    pub fn rating_bps(&self) -> u32 {
+        (self.packed >> 32) as u32
+    }
+    pub fn review_count(&self) -> u32 {
+        (self.packed & 0xFFFFFFFF) as u32
+    }
 }
 
 /// Efficient storage keys using namespaces
@@ -75,26 +93,26 @@ pub enum StorageKey {
     UserAchievements(Address),
     UserCredentials(Address),
     UsernameMap(String),
-    
+
     /// Course data namespace  
     Course(String),
     CourseFlags(String),
     CourseRating(String),
     CourseTimestamps(String),
     CourseCount,
-    
+
     /// Credential namespace
     Credential(u64),
     CredentialCount,
-    
+
     /// Achievement namespace
     Achievement(u64),
     AchievementCount,
-    
+
     /// Analytics namespace
     Analytics(u64), // timestamp-based
     AnalyticsCount,
-    
+
     /// Global admin
     Admin,
 }
@@ -117,16 +135,22 @@ impl StorageUtils {
     ) {
         // Store core user data
         let core_data = (username, email, bio, avatar_url);
-        env.storage().instance().set(&StorageKey::User(user), &core_data);
-        
+        env.storage()
+            .instance()
+            .set(&StorageKey::User(user), &core_data);
+
         // Store flags in single byte
         let flags = PackedUserFlags::new(privacy_level, verified, active);
-        env.storage().instance().set(&StorageKey::UserFlags(user), &flags);
-        
+        env.storage()
+            .instance()
+            .set(&StorageKey::UserFlags(user), &flags);
+
         // Store timestamps in single U256
         let now = env.ledger().timestamp();
         let timestamps = PackedTimestamps::new(now, now);
-        env.storage().instance().set(&StorageKey::UserTimestamps(user), &timestamps);
+        env.storage()
+            .instance()
+            .set(&StorageKey::UserTimestamps(user), &timestamps);
     }
 
     /// Store course data with packed structures
@@ -145,21 +169,40 @@ impl StorageUtils {
     ) {
         // Pack course flags
         let mut flags = 0u8;
-        if certificate_enabled { flags |= 0x01; }
+        if certificate_enabled {
+            flags |= 0x01;
+        }
         // Bits 1-7 reserved for future use
-        
+
         // Store core course data
-        let core_data = (instructor, title, description, category, level, duration, price, max_students);
-        env.storage().instance().set(&StorageKey::Course(course_id.clone()), &core_data);
-        env.storage().instance().set(&StorageKey::CourseFlags(course_id.clone()), &flags);
-        
+        let core_data = (
+            instructor,
+            title,
+            description,
+            category,
+            level,
+            duration,
+            price,
+            max_students,
+        );
+        env.storage()
+            .instance()
+            .set(&StorageKey::Course(course_id.clone()), &core_data);
+        env.storage()
+            .instance()
+            .set(&StorageKey::CourseFlags(course_id.clone()), &flags);
+
         // Initialize rating and timestamps
         let rating = PackedRating::new(0, 0);
         let now = env.ledger().timestamp();
         let timestamps = PackedTimestamps::new(now, now);
-        
-        env.storage().instance().set(&StorageKey::CourseRating(course_id.clone()), &rating);
-        env.storage().instance().set(&StorageKey::CourseTimestamps(course_id), &timestamps);
+
+        env.storage()
+            .instance()
+            .set(&StorageKey::CourseRating(course_id.clone()), &rating);
+        env.storage()
+            .instance()
+            .set(&StorageKey::CourseTimestamps(course_id), &timestamps);
     }
 
     /// Efficiently add ID to user's list (achievements/credentials)
@@ -168,11 +211,13 @@ impl StorageUtils {
             ListType::Achievements => StorageKey::UserAchievements(user),
             ListType::Credentials => StorageKey::UserCredentials(user),
         };
-        
-        let mut list: Vec<u64> = env.storage().instance()
+
+        let mut list: Vec<u64> = env
+            .storage()
+            .instance()
             .get(&key)
             .unwrap_or_else(|| Vec::new(env));
-        
+
         if !list.contains(&id) {
             list.push_back(id);
             env.storage().instance().set(&key, &list);
@@ -186,14 +231,12 @@ impl StorageUtils {
             EntityType::Credential => StorageKey::CredentialCount,
             EntityType::Achievement => StorageKey::AchievementCount,
         };
-        
-        let current_id: u64 = env.storage().instance()
-            .get(&key)
-            .unwrap_or(0);
-        
+
+        let current_id: u64 = env.storage().instance().get(&key).unwrap_or(0);
+
         let next_id = current_id + 1;
         env.storage().instance().set(&key, &next_id);
-        
+
         next_id
     }
 
@@ -212,15 +255,17 @@ impl StorageUtils {
         // Pack all metrics into single storage entry
         let packed_data = (
             total_users,
-            active_users, 
+            active_users,
             total_courses,
             total_completions,
             avg_progress_bps,
             avg_quiz_score_bps,
-            total_time_spent
+            total_time_spent,
         );
-        
-        env.storage().instance().set(&StorageKey::Analytics(timestamp), &packed_data);
+
+        env.storage()
+            .instance()
+            .set(&StorageKey::Analytics(timestamp), &packed_data);
     }
 }
 

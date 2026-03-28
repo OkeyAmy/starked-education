@@ -3,19 +3,19 @@
  * API endpoints for payment processing and management
  */
 
-import express from 'express';
-import { PaymentController } from '../controllers/PaymentController';
-import { authenticateToken, requireRole } from '../middleware/auth';
-import { validatePayment } from '../middleware/validation';
-import { rateLimit } from 'express-rate-limit';
+import express, { Router } from "express";
+import { PaymentController } from "../controllers/PaymentController";
+import { authenticateToken, requireRole } from "../middleware/auth";
+import { validatePayment } from "../middleware/validation";
+import { rateLimit } from "express-rate-limit";
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Rate limiting for payment endpoints
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // limit each IP to 20 payment requests per windowMs
-  message: 'Too many payment attempts, please try again later.',
+  message: "Too many payment attempts, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -23,7 +23,7 @@ const paymentLimiter = rateLimit({
 const refundLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5, // limit each IP to 5 refund requests per hour
-  message: 'Too many refund requests, please try again later.',
+  message: "Too many refund requests, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -33,11 +33,12 @@ const refundLimiter = rateLimit({
  * @desc Create payment intent
  * @access Private
  */
-router.post('/intent', 
-  authenticateToken, 
+router.post(
+  "/intent",
+  authenticateToken,
   paymentLimiter,
   validatePayment,
-  PaymentController.createPaymentIntent
+  PaymentController.createPaymentIntent,
 );
 
 /**
@@ -45,10 +46,11 @@ router.post('/intent',
  * @desc Create Stellar payment transaction
  * @access Private
  */
-router.post('/stellar/create', 
-  authenticateToken, 
+router.post(
+  "/stellar/create",
+  authenticateToken,
   paymentLimiter,
-  PaymentController.createStellarPayment
+  PaymentController.createStellarPayment,
 );
 
 /**
@@ -56,10 +58,11 @@ router.post('/stellar/create',
  * @desc Submit Stellar payment transaction
  * @access Private
  */
-router.post('/stellar/submit', 
-  authenticateToken, 
+router.post(
+  "/stellar/submit",
+  authenticateToken,
   paymentLimiter,
-  PaymentController.submitStellarPayment
+  PaymentController.submitStellarPayment,
 );
 
 /**
@@ -67,32 +70,41 @@ router.post('/stellar/submit',
  * @desc Get payment details
  * @access Private
  */
-router.get('/:id', authenticateToken, PaymentController.getPaymentById);
+router.get("/:id", authenticateToken, PaymentController.getPaymentById);
 
 /**
  * @route GET /api/payments/enrollment/:enrollmentId
  * @desc Get payments for enrollment
  * @access Private
  */
-router.get('/enrollment/:enrollmentId', authenticateToken, PaymentController.getEnrollmentPayments);
+router.get(
+  "/enrollment/:enrollmentId",
+  authenticateToken,
+  PaymentController.getEnrollmentPayments,
+);
 
 /**
  * @route GET /api/payments/history
  * @desc Get user payment history
  * @access Private
  */
-router.get('/history', authenticateToken, PaymentController.getUserPaymentHistory);
+router.get(
+  "/history",
+  authenticateToken,
+  PaymentController.getUserPaymentHistory,
+);
 
 /**
  * @route POST /api/payments/:id/refund
  * @desc Process refund
  * @access Private (Admin only)
  */
-router.post('/:id/refund', 
-  authenticateToken, 
-  requireRole(['admin']),
+router.post(
+  "/:id/refund",
+  authenticateToken,
+  requireRole(["admin"]),
   refundLimiter,
-  PaymentController.processRefund
+  PaymentController.processRefund,
 );
 
 /**
@@ -100,24 +112,29 @@ router.post('/:id/refund',
  * @desc Generate payment receipt
  * @access Private
  */
-router.get('/receipt/:paymentId', authenticateToken, PaymentController.generateReceipt);
+router.get(
+  "/receipt/:paymentId",
+  authenticateToken,
+  PaymentController.generateReceipt,
+);
 
 /**
  * @route GET /api/payments/settings
  * @desc Get payment settings
  * @access Public
  */
-router.get('/settings', PaymentController.getPaymentSettings);
+router.get("/settings", PaymentController.getPaymentSettings);
 
 /**
  * @route PUT /api/payments/settings
  * @desc Update payment settings
  * @access Private (Admin only)
  */
-router.put('/settings', 
-  authenticateToken, 
-  requireRole(['admin']),
-  PaymentController.updatePaymentSettings
+router.put(
+  "/settings",
+  authenticateToken,
+  requireRole(["admin"]),
+  PaymentController.updatePaymentSettings,
 );
 
 /**
@@ -125,16 +142,17 @@ router.put('/settings',
  * @desc Get supported payment methods
  * @access Public
  */
-router.get('/methods', PaymentController.getSupportedPaymentMethods);
+router.get("/methods", PaymentController.getSupportedPaymentMethods);
 
 /**
  * @route POST /api/payments/validate
  * @desc Validate payment parameters
  * @access Private
  */
-router.post('/validate', 
-  authenticateToken, 
-  PaymentController.validatePaymentParameters
+router.post(
+  "/validate",
+  authenticateToken,
+  PaymentController.validatePaymentParameters,
 );
 
 /**
@@ -142,10 +160,11 @@ router.post('/validate',
  * @desc Get payment analytics
  * @access Private (Admin only)
  */
-router.get('/analytics', 
-  authenticateToken, 
-  requireRole(['admin']),
-  PaymentController.getPaymentAnalytics
+router.get(
+  "/analytics",
+  authenticateToken,
+  requireRole(["admin"]),
+  PaymentController.getPaymentAnalytics,
 );
 
 /**
@@ -153,26 +172,24 @@ router.get('/analytics',
  * @desc Get exchange rates
  * @access Public
  */
-router.get('/exchange-rates', PaymentController.getExchangeRates);
+router.get("/exchange-rates", PaymentController.getExchangeRates);
 
 /**
  * @route POST /api/payments/convert
  * @desc Convert currency amount
  * @access Private
  */
-router.post('/convert', 
-  authenticateToken, 
-  PaymentController.convertCurrency
-);
+router.post("/convert", authenticateToken, PaymentController.convertCurrency);
 
 /**
  * @route GET /api/payments/stellar/balance/:address
  * @desc Get Stellar account balance
  * @access Private
  */
-router.get('/stellar/balance/:address', 
-  authenticateToken, 
-  PaymentController.getStellarBalance
+router.get(
+  "/stellar/balance/:address",
+  authenticateToken,
+  PaymentController.getStellarBalance,
 );
 
 /**
@@ -180,9 +197,10 @@ router.get('/stellar/balance/:address',
  * @desc Get Stellar payment history
  * @access Private
  */
-router.get('/stellar/transactions/:address', 
-  authenticateToken, 
-  PaymentController.getStellarTransactionHistory
+router.get(
+  "/stellar/transactions/:address",
+  authenticateToken,
+  PaymentController.getStellarTransactionHistory,
 );
 
 /**
@@ -190,13 +208,16 @@ router.get('/stellar/transactions/:address',
  * @desc Handle Stellar webhook
  * @access Public
  */
-router.post('/webhook/stellar', PaymentController.handleStellarWebhook);
+router.post("/webhook/stellar", PaymentController.handleStellarWebhook);
 
 /**
  * @route POST /api/payments/webhook/payment-gateway
  * @desc Handle payment gateway webhook
  * @access Public
  */
-router.post('/webhook/payment-gateway', PaymentController.handlePaymentGatewayWebhook);
+router.post(
+  "/webhook/payment-gateway",
+  PaymentController.handlePaymentGatewayWebhook,
+);
 
 export default router;

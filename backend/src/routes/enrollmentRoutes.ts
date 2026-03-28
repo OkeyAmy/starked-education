@@ -3,19 +3,22 @@
  * API endpoints for course enrollment management
  */
 
-import express from 'express';
-import { EnrollmentController } from '../controllers/EnrollmentController';
-import { authenticateToken, requireRole } from '../middleware/auth';
-import { validateEnrollment, validateEnrollmentUpdate } from '../middleware/validation';
-import { rateLimit } from 'express-rate-limit';
+import express, { Router } from "express";
+import { EnrollmentController } from "../controllers/EnrollmentController";
+import { authenticateToken, requireRole } from "../middleware/auth";
+import {
+  validateEnrollment,
+  validateEnrollmentUpdate,
+} from "../middleware/validation";
+import { rateLimit } from "express-rate-limit";
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Rate limiting for enrollment endpoints
 const enrollmentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // limit each IP to 10 enrollment requests per windowMs
-  message: 'Too many enrollment attempts, please try again later.',
+  message: "Too many enrollment attempts, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -23,7 +26,7 @@ const enrollmentLimiter = rateLimit({
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // limit each IP to 20 payment requests per windowMs
-  message: 'Too many payment attempts, please try again later.',
+  message: "Too many payment attempts, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -33,25 +36,26 @@ const paymentLimiter = rateLimit({
  * @desc Get user's enrollments with filtering and pagination
  * @access Private
  */
-router.get('/', authenticateToken, EnrollmentController.getUserEnrollments);
+router.get("/", authenticateToken, EnrollmentController.getUserEnrollments);
 
 /**
  * @route GET /api/enrollments/:id
  * @desc Get specific enrollment details
  * @access Private
  */
-router.get('/:id', authenticateToken, EnrollmentController.getEnrollmentById);
+router.get("/:id", authenticateToken, EnrollmentController.getEnrollmentById);
 
 /**
  * @route POST /api/enrollments
  * @desc Create new enrollment (enroll in course)
  * @access Private
  */
-router.post('/', 
-  authenticateToken, 
+router.post(
+  "/",
+  authenticateToken,
   enrollmentLimiter,
   validateEnrollment,
-  EnrollmentController.createEnrollment
+  EnrollmentController.createEnrollment,
 );
 
 /**
@@ -59,10 +63,11 @@ router.post('/',
  * @desc Update enrollment details
  * @access Private
  */
-router.put('/:id', 
-  authenticateToken, 
+router.put(
+  "/:id",
+  authenticateToken,
   validateEnrollmentUpdate,
-  EnrollmentController.updateEnrollment
+  EnrollmentController.updateEnrollment,
 );
 
 /**
@@ -70,38 +75,51 @@ router.put('/:id',
  * @desc Cancel enrollment
  * @access Private
  */
-router.delete('/:id', authenticateToken, EnrollmentController.cancelEnrollment);
+router.delete("/:id", authenticateToken, EnrollmentController.cancelEnrollment);
 
 /**
  * @route POST /api/enrollments/:id/complete
  * @desc Mark enrollment as completed
  * @access Private
  */
-router.post('/:id/complete', authenticateToken, EnrollmentController.completeEnrollment);
+router.post(
+  "/:id/complete",
+  authenticateToken,
+  EnrollmentController.completeEnrollment,
+);
 
 /**
  * @route GET /api/enrollments/:id/progress
  * @desc Get enrollment progress
  * @access Private
  */
-router.get('/:id/progress', authenticateToken, EnrollmentController.getEnrollmentProgress);
+router.get(
+  "/:id/progress",
+  authenticateToken,
+  EnrollmentController.getEnrollmentProgress,
+);
 
 /**
  * @route PUT /api/enrollments/:id/progress
  * @desc Update enrollment progress
  * @access Private
  */
-router.put('/:id/progress', authenticateToken, EnrollmentController.updateEnrollmentProgress);
+router.put(
+  "/:id/progress",
+  authenticateToken,
+  EnrollmentController.updateEnrollmentProgress,
+);
 
 /**
  * @route GET /api/enrollments/course/:courseId
  * @desc Get all enrollments for a specific course
  * @access Private (Educator/Admin only)
  */
-router.get('/course/:courseId', 
-  authenticateToken, 
-  requireRole(['educator', 'admin']),
-  EnrollmentController.getCourseEnrollments
+router.get(
+  "/course/:courseId",
+  authenticateToken,
+  requireRole(["educator", "admin"]),
+  EnrollmentController.getCourseEnrollments,
 );
 
 /**
@@ -109,10 +127,11 @@ router.get('/course/:courseId',
  * @desc Issue certificate for completed enrollment
  * @access Private (Educator/Admin only)
  */
-router.post('/:id/certificate', 
-  authenticateToken, 
-  requireRole(['educator', 'admin']),
-  EnrollmentController.issueCertificate
+router.post(
+  "/:id/certificate",
+  authenticateToken,
+  requireRole(["educator", "admin"]),
+  EnrollmentController.issueCertificate,
 );
 
 /**
@@ -120,10 +139,11 @@ router.post('/:id/certificate',
  * @desc Get waitlist for a course
  * @access Private (Educator/Admin only)
  */
-router.get('/waitlist/:courseId', 
-  authenticateToken, 
-  requireRole(['educator', 'admin']),
-  EnrollmentController.getCourseWaitlist
+router.get(
+  "/waitlist/:courseId",
+  authenticateToken,
+  requireRole(["educator", "admin"]),
+  EnrollmentController.getCourseWaitlist,
 );
 
 /**
@@ -131,10 +151,11 @@ router.get('/waitlist/:courseId',
  * @desc Add user to course waitlist
  * @access Private
  */
-router.post('/waitlist/:courseId', 
-  authenticateToken, 
+router.post(
+  "/waitlist/:courseId",
+  authenticateToken,
   enrollmentLimiter,
-  EnrollmentController.addToWaitlist
+  EnrollmentController.addToWaitlist,
 );
 
 /**
@@ -142,24 +163,33 @@ router.post('/waitlist/:courseId',
  * @desc Remove user from course waitlist
  * @access Private
  */
-router.delete('/waitlist/:courseId', authenticateToken, EnrollmentController.removeFromWaitlist);
+router.delete(
+  "/waitlist/:courseId",
+  authenticateToken,
+  EnrollmentController.removeFromWaitlist,
+);
 
 /**
  * @route GET /api/enrollments/analytics/user
  * @desc Get user enrollment analytics
  * @access Private
  */
-router.get('/analytics/user', authenticateToken, EnrollmentController.getUserEnrollmentAnalytics);
+router.get(
+  "/analytics/user",
+  authenticateToken,
+  EnrollmentController.getUserEnrollmentAnalytics,
+);
 
 /**
  * @route GET /api/enrollments/analytics/course/:courseId
  * @desc Get course enrollment analytics
  * @access Private (Educator/Admin only)
  */
-router.get('/analytics/course/:courseId', 
-  authenticateToken, 
-  requireRole(['educator', 'admin']),
-  EnrollmentController.getCourseEnrollmentAnalytics
+router.get(
+  "/analytics/course/:courseId",
+  authenticateToken,
+  requireRole(["educator", "admin"]),
+  EnrollmentController.getCourseEnrollmentAnalytics,
 );
 
 /**
@@ -167,10 +197,11 @@ router.get('/analytics/course/:courseId',
  * @desc Get global enrollment analytics
  * @access Private (Admin only)
  */
-router.get('/analytics/global', 
-  authenticateToken, 
-  requireRole(['admin']),
-  EnrollmentController.getGlobalEnrollmentAnalytics
+router.get(
+  "/analytics/global",
+  authenticateToken,
+  requireRole(["admin"]),
+  EnrollmentController.getGlobalEnrollmentAnalytics,
 );
 
 /**
@@ -178,10 +209,11 @@ router.get('/analytics/global',
  * @desc Bulk enrollment operations
  * @access Private (Admin only)
  */
-router.post('/bulk', 
-  authenticateToken, 
-  requireRole(['admin']),
-  EnrollmentController.bulkEnrollmentOperations
+router.post(
+  "/bulk",
+  authenticateToken,
+  requireRole(["admin"]),
+  EnrollmentController.bulkEnrollmentOperations,
 );
 
 /**
@@ -189,23 +221,32 @@ router.post('/bulk',
  * @desc Get course capacity information
  * @access Private
  */
-router.get('/capacity/:courseId', authenticateToken, EnrollmentController.getCourseCapacity);
+router.get(
+  "/capacity/:courseId",
+  authenticateToken,
+  EnrollmentController.getCourseCapacity,
+);
 
 /**
  * @route POST /api/enrollments/validate-prerequisites
  * @desc Validate course prerequisites
  * @access Private
  */
-router.post('/validate-prerequisites', authenticateToken, EnrollmentController.validatePrerequisites);
+router.post(
+  "/validate-prerequisites",
+  authenticateToken,
+  EnrollmentController.validatePrerequisites,
+);
 
 /**
  * @route GET /api/enrollments/history/:userId
  * @desc Get user enrollment history
  * @access Private
  */
-router.get('/history/:userId', 
-  authenticateToken, 
-  EnrollmentController.getUserEnrollmentHistory
+router.get(
+  "/history/:userId",
+  authenticateToken,
+  EnrollmentController.getUserEnrollmentHistory,
 );
 
 /**
@@ -213,10 +254,11 @@ router.get('/history/:userId',
  * @desc Renew expired enrollment
  * @access Private
  */
-router.post('/:id/renew', 
-  authenticateToken, 
+router.post(
+  "/:id/renew",
+  authenticateToken,
   paymentLimiter,
-  EnrollmentController.renewEnrollment
+  EnrollmentController.renewEnrollment,
 );
 
 /**
@@ -224,10 +266,11 @@ router.post('/:id/renew',
  * @desc Export course enrollments
  * @access Private (Educator/Admin only)
  */
-router.get('/export/:courseId', 
-  authenticateToken, 
-  requireRole(['educator', 'admin']),
-  EnrollmentController.exportCourseEnrollments
+router.get(
+  "/export/:courseId",
+  authenticateToken,
+  requireRole(["educator", "admin"]),
+  EnrollmentController.exportCourseEnrollments,
 );
 
 export default router;
