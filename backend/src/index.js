@@ -94,6 +94,10 @@ app.use('/api/secure-comm', secureCommRoutes);
 app.use('/api/agi-tutor', agiTutorRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
+// Autonomous Agents routes
+const autonomousAgentsRoutes = require('./routes/autonomousAgents');
+app.use('/api/autonomous-agents', autonomousAgentsRoutes);
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
