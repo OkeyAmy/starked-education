@@ -1,0 +1,205 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-contracts:
+    name: Test Smart Contracts
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        
+    - name: Install Soroban CLI
+      run: |
+        cargo install soroban-cli --version 21.0.0 --locked
+        
+    - name: Test contracts
+      run: |
+        cd contracts
+        cargo test
+        
+    - name: Build contracts
+      run: |
+        cd contracts
+        cargo build --release
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: starked_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd backend
+        npm ci
+        
+    - name: Run linting
+      run: |
+        cd backend
+        npm run lint
+        
+    - name: Run tests
+      run: |
+        cd backend
+        npm run test:ci
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/starked_test
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test_secret
+        
+    - name: Build backend
+      run: |
+        cd backend
+        npm run build
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci
+        
+    - name: Run linting
+      run: |
+        cd frontend
+        npm run lint
+        
+    - name: Run tests
+      run: |
+        cd frontend
+        npm run test:ci
+        
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  deploy-testnet:
+    name: Deploy to Testnet
+    runs-on: ubuntu-latest
+    needs: [test-contracts, test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install Rust and Soroban
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        cargo install soroban-cli --version 21.0.0 --locked
+        
+    - name: Deploy contracts to testnet
+      run: |
+        cd contracts
+        npm run deploy:testnet
+      env:
+        STELLAR_SECRET_KEY: ${{ secrets.STELLAR_TESTNET_SECRET }}
+        STELLAR_NETWORK: testnet
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-testnet]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        npm run install:all
+        
+    - name: Run integration tests
+      run: |
+        npm run test:integration
+      env:
+        STELLAR_NETWORK: testnet
+        CONTRACT_ADDRESS: ${{ steps.deploy.outputs.contract_address }}

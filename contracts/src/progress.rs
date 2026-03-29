@@ -41,10 +41,14 @@ impl CourseProgressContract {
             last_updated: env.ledger().timestamp(),
         };
 
-        env.storage().persistent().set(&ProgressKey::UserProgress(user, course_id), &progress);
+        env.storage()
+            .persistent()
+            .set(&ProgressKey::UserProgress(user, course_id), &progress);
     }
 
     pub fn get_progress(env: Env, user: Address, course_id: String) -> Option<UserProgress> {
-        env.storage().persistent().get(&ProgressKey::UserProgress(user, course_id))
+        env.storage()
+            .persistent()
+            .get(&ProgressKey::UserProgress(user, course_id))
     }
 }

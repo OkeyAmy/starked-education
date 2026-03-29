@@ -1,3 +1,10 @@
+export enum UserRole {
+  STUDENT = 'student',
+  INSTRUCTOR = 'instructor',
+  ADMIN = 'admin',
+  MODERATOR = 'moderator'
+}
+
 export enum PrivacyLevel {
   Public = 'Public',
   Private = 'Private',
@@ -16,6 +23,7 @@ export interface UserProfile {
   credentials: number[]; // Credential IDs
   reputation: number;
   privacyLevel: PrivacyLevel;
+  role: UserRole;
 }
 
 export interface Achievement {

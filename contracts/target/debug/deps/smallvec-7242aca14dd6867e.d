@@ -1,7 +1,0 @@
-C:\Users\User\Desktop\starked-education\contracts\target\debug\deps\smallvec-7242aca14dd6867e.d: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\smallvec-1.15.1\src\lib.rs
-
-C:\Users\User\Desktop\starked-education\contracts\target\debug\deps\libsmallvec-7242aca14dd6867e.rlib: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\smallvec-1.15.1\src\lib.rs
-
-C:\Users\User\Desktop\starked-education\contracts\target\debug\deps\libsmallvec-7242aca14dd6867e.rmeta: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\smallvec-1.15.1\src\lib.rs
-
-C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\smallvec-1.15.1\src\lib.rs:

@@ -7,6 +7,8 @@ import {
   QuestionOption
 } from '../models/Quiz';
 import quizService from './quizService';
+import codeExecutionService from './codeExecutionService';
+import plagiarismDetectionService from './plagiarismDetectionService';
 
 /**
  * Grading Service
@@ -14,44 +16,28 @@ import quizService from './quizService';
  */
 class GradingService {
   /**
-   * Grade a quiz submission
+   * Grade a quiz submission (Asynchronous)
    */
   async gradeSubmission(submission: QuizSubmission): Promise<QuizResult> {
     try {
-      // Get the quiz to access questions and correct answers
       const quizResponse = await quizService.getQuizById(submission.quizId);
-      
-      if (!quizResponse.success || !quizResponse.data) {
-        throw new Error('Quiz not found');
-      }
-
+      if (!quizResponse.success || !quizResponse.data) throw new Error('Quiz not found');
       const quiz = quizResponse.data;
       const gradedAnswers: QuizAnswer[] = [];
       let totalPoints = 0;
       let earnedPoints = 0;
 
-      // Grade each answer
       for (const answer of submission.answers) {
         const question = quiz.questions.find(q => q.id === answer.questionId);
-        
         if (!question) {
-          // Question not found, mark as incorrect
-          gradedAnswers.push({
-            ...answer,
-            isCorrect: false,
-            pointsEarned: 0,
-            feedback: 'Question not found'
-          });
+          gradedAnswers.push({ ...answer, isCorrect: false, pointsEarned: 0, feedback: 'Question not found' });
           continue;
         }
 
         totalPoints += question.points;
-        const gradedAnswer = this.gradeAnswer(question, answer);
+        const gradedAnswer = await this.gradeAnswerAsync(question, answer);
         gradedAnswers.push(gradedAnswer);
-        
-        if (gradedAnswer.pointsEarned) {
-          earnedPoints += gradedAnswer.pointsEarned;
-        }
+        if (gradedAnswer.pointsEarned) earnedPoints += gradedAnswer.pointsEarned;
       }
 
       // Calculate grade and result
@@ -89,9 +75,9 @@ class GradingService {
   }
 
   /**
-   * Grade a single answer based on question type
+   * Grade a single answer asynchronously
    */
-  private gradeAnswer(question: Question, answer: QuizAnswer): QuizAnswer {
+  private async gradeAnswerAsync(question: Question, answer: QuizAnswer): Promise<QuizAnswer> {
     const gradedAnswer: QuizAnswer = {
       ...answer,
       isCorrect: false,
@@ -102,20 +88,122 @@ class GradingService {
     switch (question.type) {
       case 'multiple-choice':
         return this.gradeMultipleChoice(question, gradedAnswer);
-      
       case 'true-false':
         return this.gradeTrueFalse(question, gradedAnswer);
-      
       case 'short-answer':
         return this.gradeShortAnswer(question, gradedAnswer);
-      
       case 'essay':
-        return this.gradeEssay(question, gradedAnswer);
-      
+        return await this.gradeEssayAsync(question, gradedAnswer);
+      case 'fill-in-the-blank':
+        return this.gradeFillInTheBlank(question, gradedAnswer);
+      case 'code-submission':
+        return await this.gradeCodeSubmissionAsync(question, gradedAnswer);
+      case 'drag-and-drop':
+        return this.gradeDragAndDrop(question, gradedAnswer);
+      case 'image-based':
+        return this.gradeImageBased(question, gradedAnswer);
       default:
         gradedAnswer.feedback = 'Unknown question type';
         return gradedAnswer;
     }
+  }
+
+  /**
+   * Grade fill-in-the-blank questions
+   */
+  private gradeFillInTheBlank(question: Question, answer: QuizAnswer): QuizAnswer {
+    const userAnswer = Array.isArray(answer.answer) ? answer.answer : [answer.answer.toString()];
+    const correctAnswers = Array.isArray(question.correctAnswer) ? question.correctAnswer : [question.correctAnswer?.toString() || ''];
+
+    let correctCount = 0;
+    userAnswer.forEach((ans, index) => {
+      if (ans.toLowerCase().trim() === correctAnswers[index]?.toLowerCase().trim()) {
+        correctCount++;
+      }
+    });
+
+    const isCorrect = correctCount === correctAnswers.length;
+    const pointsEarned = (correctCount / correctAnswers.length) * question.points;
+
+    return {
+      ...answer,
+      isCorrect,
+      pointsEarned,
+      feedback: isCorrect ? 'Perfect!' : `Corrected ${correctCount} out of ${correctAnswers.length} blanks.`
+    };
+  }
+
+  /**
+   * Grade essay questions with plagiarism check
+   */
+  private async gradeEssayAsync(question: Question, answer: QuizAnswer): Promise<QuizAnswer> {
+    const text = answer.answer.toString();
+    const plagiarismReport = await plagiarismDetectionService.checkSimilarity(text, question.id);
+    
+    return {
+      ...answer,
+      isCorrect: plagiarismReport.isOriginal,
+      pointsEarned: plagiarismReport.isOriginal ? question.points * 0.5 : 0, // Mock: 50% points for original submission (other 50% for content/manually)
+      feedback: plagiarismReport.isOriginal 
+        ? 'Original content detected. Pending manual grading for content quality.'
+        : 'High similarity score detected. Plagiarism check failed.'
+    };
+  }
+
+  /**
+   * Grade code submission questions with execution
+   */
+  private async gradeCodeSubmissionAsync(question: Question, answer: QuizAnswer): Promise<QuizAnswer> {
+    const code = answer.answer.toString();
+    const testCases = question.testCases || [];
+    const evaluation = await codeExecutionService.evaluate(code, 'javascript', testCases);
+    
+    if (!evaluation.success) {
+      return { ...answer, isCorrect: false, pointsEarned: 0, feedback: evaluation.error };
+    }
+
+    const passedCount = evaluation.testResults.filter((r: any) => r.passed).length;
+    const pointsEarned = (passedCount / testCases.length) * question.points;
+    const isCorrect = passedCount === testCases.length;
+
+    return {
+      ...answer,
+      isCorrect,
+      pointsEarned,
+      feedback: `Passed ${passedCount}/${testCases.length} test cases. Performance: ${evaluation.stats.runtime}ms`
+    };
+  }
+
+  /**
+   * Grade drag and drop questions
+   */
+  private gradeDragAndDrop(question: Question, answer: QuizAnswer): QuizAnswer {
+    const userMappings = answer.answer as any; // Expected format: { zoneId: optionId }
+    const dropZones = question.dropZones || [];
+
+    let correctCount = 0;
+    dropZones.forEach(zone => {
+      if (userMappings[zone.id] === zone.correctOptionId) {
+        correctCount++;
+      }
+    });
+
+    const isCorrect = correctCount === dropZones.length;
+    const pointsEarned = (correctCount / dropZones.length) * question.points;
+
+    return {
+      ...answer,
+      isCorrect,
+      pointsEarned,
+      feedback: `Correctly placed ${correctCount} out of ${dropZones.length} items.`
+    };
+  }
+
+  /**
+   * Grade image-based questions (usually treated as multiple choice)
+   */
+  private gradeImageBased(question: Question, answer: QuizAnswer): QuizAnswer {
+    return this.gradeMultipleChoice(question, answer);
   }
 
   /**

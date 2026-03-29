@@ -1,5 +1,0 @@
-C:\Users\User\Desktop\starked-education\contracts\target\debug\build\soroban-env-common-8068c95ad9352bb8\build_script_build-8068c95ad9352bb8.d: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\soroban-env-common-20.3.0\build.rs
-
-C:\Users\User\Desktop\starked-education\contracts\target\debug\build\soroban-env-common-8068c95ad9352bb8\build_script_build-8068c95ad9352bb8.exe: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\soroban-env-common-20.3.0\build.rs
-
-C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\soroban-env-common-20.3.0\build.rs:

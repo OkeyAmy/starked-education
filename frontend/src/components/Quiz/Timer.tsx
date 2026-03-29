@@ -28,10 +28,18 @@ const Timer: React.FC<TimerProps> = ({ duration, onTimeUp }) => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  const isLowTime = timeLeft < 60;
+
   return (
-    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 font-mono text-lg bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-lg">
-      <Clock size={20} />
-      <span>{formatTime(timeLeft)}</span>
+    <div className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border transition-all duration-300 ${
+      isLowTime 
+        ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 animate-pulse ring-2 ring-red-500/20' 
+        : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/50 text-indigo-700 dark:text-indigo-300'
+    }`}>
+      <Clock size={18} className={isLowTime ? 'animate-spin-slow' : ''} />
+      <span className="font-mono text-lg font-bold tracking-tight">
+        {formatTime(timeLeft)}
+      </span>
     </div>
   );
 };

@@ -1,9 +1,10 @@
 #![cfg(test)]
 
-use soroban_sdk::{vec, Address, Env, String, Vec};
 use crate::courseMetadata::{
-    CourseMetadataContract, CourseMetadata, CourseStatus, CourseCompletion, InstructorProfile, CourseMetadataKey
+    CourseCompletion, CourseMetadata, CourseMetadataContract, CourseMetadataKey, CourseStatus,
+    InstructorProfile,
 };
+use soroban_sdk::{vec, Address, Env, String, Vec};
 
 #[test]
 fn test_initialize() {
@@ -12,9 +13,11 @@ fn test_initialize() {
 
     // Test successful initialization
     CourseMetadataContract::initialize(env.clone(), admin.clone());
-    
+
     // Verify admin is set
-    let stored_admin: Address = env.storage().instance()
+    let stored_admin: Address = env
+        .storage()
+        .instance()
         .get(&CourseMetadataKey::Admin)
         .unwrap();
     assert_eq!(stored_admin, admin);
@@ -43,16 +46,24 @@ fn test_create_course() {
         String::from_str(&env, "Learn the basics of Rust programming"),
         String::from_str(&env, "Programming"),
         String::from_str(&env, "beginner"),
-        40, // 40 hours
+        40,      // 40 hours
         1000000, // price in stroops
         vec![&env, String::from_str(&env, "Basic programming")],
-        vec![&env, String::from_str(&env, "Understand Rust syntax"), String::from_str(&env, "Write basic Rust programs")],
+        vec![
+            &env,
+            String::from_str(&env, "Understand Rust syntax"),
+            String::from_str(&env, "Write basic Rust programs"),
+        ],
         String::from_str(&env, "QmHash123"), // IPFS hash
         String::from_str(&env, "https://example.com/thumbnail.jpg"),
-        vec![&env, String::from_str(&env, "rust"), String::from_str(&env, "programming")],
+        vec![
+            &env,
+            String::from_str(&env, "rust"),
+            String::from_str(&env, "programming"),
+        ],
         String::from_str(&env, "English"),
         true, // certificate enabled
-        100, // max students
+        100,  // max students
     );
 
     // Verify course was created
@@ -110,16 +121,16 @@ fn test_update_course() {
         Some(String::from_str(&env, "Updated description")),
         None, // category unchanged
         Some(String::from_str(&env, "intermediate")),
-        Some(60), // updated duration
+        Some(60),      // updated duration
         Some(2000000), // updated price
-        None, // prerequisites unchanged
-        None, // learning objectives unchanged
-        None, // syllabus unchanged
-        None, // thumbnail unchanged
-        None, // tags unchanged
-        None, // language unchanged
-        None, // certificate enabled unchanged
-        None, // max students unchanged
+        None,          // prerequisites unchanged
+        None,          // learning objectives unchanged
+        None,          // syllabus unchanged
+        None,          // thumbnail unchanged
+        None,          // tags unchanged
+        None,          // language unchanged
+        None,          // certificate enabled unchanged
+        None,          // max students unchanged
         Some(CourseStatus::Inactive),
     );
 
@@ -127,14 +138,23 @@ fn test_update_course() {
 
     // Verify updates
     let updated_course = CourseMetadataContract::get_course(env, course_id);
-    assert_eq!(updated_course.title, String::from_str(&env, "Updated Title"));
-    assert_eq!(updated_course.description, String::from_str(&env, "Updated description"));
+    assert_eq!(
+        updated_course.title,
+        String::from_str(&env, "Updated Title")
+    );
+    assert_eq!(
+        updated_course.description,
+        String::from_str(&env, "Updated description")
+    );
     assert_eq!(updated_course.level, String::from_str(&env, "intermediate"));
     assert_eq!(updated_course.duration, 60);
     assert_eq!(updated_course.price, 2000000);
     assert!(matches!(updated_course.status, CourseStatus::Inactive));
     // Category should remain unchanged
-    assert_eq!(updated_course.category, String::from_str(&env, "Programming"));
+    assert_eq!(
+        updated_course.category,
+        String::from_str(&env, "Programming")
+    );
 }
 
 #[test]
@@ -173,7 +193,7 @@ fn test_verify_course() {
     // Get course and manually tamper with verification hash test
     let mut course = CourseMetadataContract::get_course(env.clone(), course_id);
     course.verification_hash = String::from_str(&env, "tampered_hash");
-    
+
     // This would require direct storage access to test tampering
     // For now, we just verify the verification logic works
     let original_verification = CourseMetadataContract::verify_course(env, course_id);
@@ -215,9 +235,13 @@ fn test_record_completion() {
         env.clone(),
         course_id.clone(),
         student.clone(),
-        85, // final grade
+        85,                                      // final grade
         String::from_str(&env, "QmCertHash456"), // certificate hash
-        vec![&env, String::from_str(&env, "Rust basics"), String::from_str(&env, "Memory management")],
+        vec![
+            &env,
+            String::from_str(&env, "Rust basics"),
+            String::from_str(&env, "Memory management"),
+        ],
     );
 
     // Verify completion was recorded
@@ -225,7 +249,10 @@ fn test_record_completion() {
     assert_eq!(completion.course_id, course_id);
     assert_eq!(completion.student, student);
     assert_eq!(completion.final_grade, 85);
-    assert_eq!(completion.certificate_hash, String::from_str(&env, "QmCertHash456"));
+    assert_eq!(
+        completion.certificate_hash,
+        String::from_str(&env, "QmCertHash456")
+    );
     assert!(!completion.is_verified); // Initially not verified
     assert_eq!(completion.skills_acquired.len(), 2);
 
@@ -283,7 +310,8 @@ fn test_verify_completion() {
     assert!(!completion.is_verified);
 
     // Verify completion
-    let verify_result = CourseMetadataContract::verify_completion(env.clone(), completion_id.clone());
+    let verify_result =
+        CourseMetadataContract::verify_completion(env.clone(), completion_id.clone());
     assert!(verify_result);
 
     // Check that completion is now verified
@@ -322,7 +350,8 @@ fn test_rate_course() {
     );
 
     // Rate the course
-    let rate_result = CourseMetadataContract::rate_course(env.clone(), course_id.clone(), rater, 80);
+    let rate_result =
+        CourseMetadataContract::rate_course(env.clone(), course_id.clone(), rater, 80);
     assert!(rate_result);
 
     // Check rating was updated
@@ -331,7 +360,8 @@ fn test_rate_course() {
     assert_eq!(rated_course.review_count, 1);
 
     // Rate again
-    let rate_result2 = CourseMetadataContract::rate_course(env.clone(), course_id.clone(), rater, 90);
+    let rate_result2 =
+        CourseMetadataContract::rate_course(env.clone(), course_id.clone(), rater, 90);
     assert!(rate_result2);
 
     // Check average rating calculation

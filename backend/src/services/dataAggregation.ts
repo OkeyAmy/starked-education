@@ -120,4 +120,35 @@ export class DataAggregationService {
       }
     ];
   }
+
+  /**
+   * Get aggregate performance for a quiz
+   */
+  static async getQuizPerformanceAnalytics(quizId: string) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    return {
+      quizId,
+      totalSubmissions: 150 + Math.floor(Math.random() * 50),
+      averageScore: 78 + (Math.random() * 10),
+      passRate: 85,
+      questionDifficulty: [
+        { questionId: 'q1', text: 'Stellar Basics', difficulty: 0.15, correctRate: 0.85 },
+        { questionId: 'q2', text: 'Consensus Logic', difficulty: 0.45, correctRate: 0.55 },
+        { questionId: 'q3', text: 'Horizon API', difficulty: 0.25, correctRate: 0.75 }
+      ],
+      scoreDistribution: [
+        { range: '0-20', count: 5 },
+        { range: '21-40', count: 12 },
+        { range: '41-60', count: 28 },
+        { range: '61-80', count: 65 },
+        { range: '81-100', count: 40 }
+      ],
+      learningOutcomes: [
+        { outcome: 'Stellar Fundamentals', score: 88, weight: 40 },
+        { outcome: 'Operational Security', score: 72, weight: 30 },
+        { outcome: 'API Integration', score: 82, weight: 30 }
+      ]
+    };
+  }
 }

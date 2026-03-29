@@ -2,7 +2,11 @@
 extern crate std;
 
 use crate::analyticsStorage::{AnalyticsContract, AnalyticsContractClient, LearningOutcome};
-use soroban_sdk::{testutils::{Address as _, Ledger}, Env, Address, Vec, symbol_short};
+use soroban_sdk::{
+    symbol_short,
+    testutils::{Address as _, Ledger},
+    Address, Env, Vec,
+};
 
 #[test]
 fn test_analytics_initialization() {
@@ -17,11 +21,11 @@ fn test_analytics_initialization() {
 
     // Verify admin is set
     assert_eq!(client.get_admin(), admin);
-    
+
     // Verify history is empty
     let history = client.get_history();
     assert_eq!(history.len(), 0);
-    
+
     // Verify last update is 0
     assert_eq!(client.get_last_update(), 0);
 }
@@ -47,7 +51,15 @@ fn test_record_and_retrieve_metrics() {
     let total_time = 5000; // minutes
 
     env.ledger().set_timestamp(1000);
-    client.record_metrics(&total_users, &active_users, &total_courses, &total_completions, &avg_progress, &avg_quiz_score, &total_time);
+    client.record_metrics(
+        &total_users,
+        &active_users,
+        &total_courses,
+        &total_completions,
+        &avg_progress,
+        &avg_quiz_score,
+        &total_time,
+    );
 
     // Verify latest
     let latest = client.get_latest().unwrap();
@@ -57,7 +69,7 @@ fn test_record_and_retrieve_metrics() {
     assert_eq!(latest.avg_quiz_score_bps, avg_quiz_score);
     assert_eq!(latest.total_time_spent, total_time);
     assert_eq!(latest.timestamp, 1000);
-    
+
     // Verify last update timestamp
     assert_eq!(client.get_last_update(), 1000);
 }
@@ -89,7 +101,7 @@ fn test_historical_data_tracking() {
     assert_eq!(history.get(0).unwrap().timestamp, 1000);
     assert_eq!(history.get(1).unwrap().timestamp, 2000);
     assert_eq!(history.get(2).unwrap().timestamp, 3000);
-    
+
     // Verify progression
     assert_eq!(history.get(0).unwrap().total_users, 100);
     assert_eq!(history.get(1).unwrap().total_users, 110);
@@ -143,13 +155,13 @@ fn test_learning_outcomes() {
     outcomes.push_back(LearningOutcome {
         course_id: symbol_short!("COURSE1"),
         completion_rate_bps: 6500, // 65%
-        avg_score_bps: 8200, // 82%
+        avg_score_bps: 8200,       // 82%
         total_enrolled: 150,
     });
     outcomes.push_back(LearningOutcome {
         course_id: symbol_short!("COURSE2"),
         completion_rate_bps: 7200, // 72%
-        avg_score_bps: 8500, // 85%
+        avg_score_bps: 8500,       // 85%
         total_enrolled: 120,
     });
 
@@ -159,7 +171,10 @@ fn test_learning_outcomes() {
     // Retrieve outcomes
     let retrieved = client.get_outcomes(&1000).unwrap();
     assert_eq!(retrieved.len(), 2);
-    assert_eq!(retrieved.get(0).unwrap().course_id, symbol_short!("COURSE1"));
+    assert_eq!(
+        retrieved.get(0).unwrap().course_id,
+        symbol_short!("COURSE1")
+    );
     assert_eq!(retrieved.get(0).unwrap().completion_rate_bps, 6500);
     assert_eq!(retrieved.get(1).unwrap().avg_score_bps, 8500);
 }
@@ -185,7 +200,7 @@ fn test_growth_metrics() {
 
     // Calculate growth
     let growth = client.get_growth_metrics(&0, &2000, &7000, &9000).unwrap();
-    
+
     // user_growth, completion_growth, progress_change
     assert_eq!(growth.0, 25); // 25 new users
     assert_eq!(growth.1, 12); // 12 new completions

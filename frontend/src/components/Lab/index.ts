@@ -1,0 +1,1 @@
+export { VirtualScienceLab } from './VirtualScienceLab';

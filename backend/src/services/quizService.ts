@@ -181,11 +181,12 @@ class QuizService {
         };
       }
 
-      const updatedQuiz: Quiz = {
+      const updatedQuiz: any = {
         ...existingQuiz,
-        ...updateRequest,
-        id: quizId, // Ensure ID doesn't change
-        instructorId: existingQuiz.instructorId, // Ensure instructor doesn't change
+        title: updateRequest.title || existingQuiz.title,
+        description: updateRequest.description || existingQuiz.description,
+        id: quizId,
+        instructorId: existingQuiz.instructorId,
         metadata: {
           ...existingQuiz.metadata,
           ...updateRequest.metadata,
@@ -458,6 +459,50 @@ class QuizService {
         message: `Failed to store quiz result: ${(error as Error).message}`
       };
     }
+  }
+
+  /**
+   * Get all questions from a course to act as a question bank
+   */
+  async getQuestionBank(courseId: string): Promise<Question[]> {
+    const courseQuizzes = Array.from(this.quizzes.values()).filter(q => q.courseId === courseId);
+    const questions: Question[] = [];
+    courseQuizzes.forEach(quiz => {
+      quiz.questions.forEach(q => {
+        if (!questions.find(existing => existing.question === q.question)) {
+          questions.push(q);
+        }
+      });
+    });
+    return questions;
+  }
+
+  /**
+   * Create a quiz with randomized question selection
+   */
+  async createRandomizedQuiz(courseId: string, instructorId: string, count: number): Promise<QuizResponse> {
+    const bank = await this.getQuestionBank(courseId);
+    if (bank.length < count) {
+      throw new Error(`Not enough questions in the bank. Requested: ${count}, Bank size: ${bank.length}`);
+    }
+
+    const shuffled = [...bank].sort(() => 0.5 - Math.random());
+    const selectedQuestions = shuffled.slice(0, count);
+
+    return await this.createQuiz({
+      title: `Randomized Assessment - ${new Date().toLocaleDateString()}`,
+      description: 'Auto-generated quiz from the question bank.',
+      courseId,
+      questions: selectedQuestions,
+      settings: {
+        shuffleQuestions: true,
+        attemptsAllowed: 1
+      },
+      metadata: {
+        difficulty: 'medium',
+        tags: ['randomized', 'auto-generated']
+      }
+    }, instructorId);
   }
 
   /**

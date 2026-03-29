@@ -91,13 +91,59 @@ export class AnalyticsService {
   }
 
   /**
+   * Get aggregate analytics for a quiz
+   */
+  static async getQuizAnalytics(quizId: string) {
+    const cacheKey = `analytics:quiz:${quizId}`;
+
+    try {
+      if (redisClient?.isOpen) {
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) return JSON.parse(cachedData);
+      }
+    } catch (e) { /* ignore cache error */ }
+
+    const data = await DataAggregationService.getQuizPerformanceAnalytics(quizId);
+
+    try {
+      if (redisClient?.isOpen) {
+        await redisClient.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(data));
+      }
+    } catch (e) { /* ignore cache error */ }
+
+    return data;
+  }
+
+  /**
+   * Get specific user performance trends for quizzes
+   */
+  static async getUserQuizInsights(userId: string) {
+    // This could also be cached, but for now we calculate fresh
+    const activity = await DataAggregationService.getUserDailyActivity(userId, 30);
+    const quizStats = activity.filter(a => a.quiz_score > 0);
+    
+    return {
+      userId,
+      quizParticipation: quizStats.length,
+      averageQuizScore: quizStats.length > 0 
+        ? quizStats.reduce((sum, a) => sum + a.quiz_score, 0) / quizStats.length 
+        : 0,
+      recentScores: quizStats.slice(-5).map(a => ({ date: a.date, score: a.quiz_score }))
+    };
+  }
+
+  /**
    * Generate a downloadable report
    */
-  static async generateReport(type: 'course' | 'user', id: string) {
+  static async generateReport(type: 'course' | 'user' | 'quiz', id: string) {
     if (type === 'course') {
       return await ReportService.generateCoursePerformanceReport(id);
     } else if (type === 'user') {
       return await ReportService.generateUserProgressReport(id);
+    } else if (type === 'quiz') {
+      // Assuming ReportService will implement this
+      // return await ReportService.generateQuizDetailedReport(id);
+      return { message: 'Quiz report generation logic would go here' };
     } else {
       throw new Error('Invalid report type');
     }

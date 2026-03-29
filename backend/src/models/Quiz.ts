@@ -12,10 +12,14 @@ export interface QuestionOption {
 
 export interface Question {
   id: string;
-  type: 'multiple-choice' | 'true-false' | 'short-answer' | 'essay';
+  type: 'multiple-choice' | 'true-false' | 'short-answer' | 'essay' | 'fill-in-the-blank' | 'code-submission' | 'drag-and-drop' | 'image-based';
   question: string;
-  options?: QuestionOption[]; // For multiple-choice questions
-  correctAnswer?: string | string[]; // For true-false, short-answer
+  options?: QuestionOption[]; // For multiple-choice, drag-and-drop
+  correctAnswer?: string | string[]; // For true-false, short-answer, fill-in-the-blank
+  codeTemplate?: string; // For code-submission
+  testCases?: Array<{ input: string; expectedOutput: string }>; // For code-submission
+  imageUrl?: string; // For image-based
+  dropZones?: Array<{ id: string; label: string; correctOptionId: string }>; // For drag-and-drop
   points: number;
   explanation?: string;
   order: number;

@@ -3,19 +3,19 @@
  * Handles HTTP endpoints for course discovery, search, and recommendations
  */
 
-import { Request, Response, Router } from 'express';
-import { validationResult, query, body } from 'express-validator';
-import searchService from '../services/searchService';
-import recommendationService from '../services/recommendationService';
+import { Request, Response, Router } from "express";
+import { validationResult, query, body } from "express-validator";
+import searchService from "../services/searchService";
+import recommendationService from "../services/recommendationService";
 import {
   Course,
   SearchFilter,
   RecommendationContext,
   CourseCategory,
-} from '../models/Course';
-import logger from '../utils/logger';
+} from "../models/Course";
+import logger from "../utils/logger";
 
-const router = Router();
+export const router: Router = Router();
 
 /**
  * Middleware for error handling
@@ -23,13 +23,13 @@ const router = Router();
 const handleValidationErrors = (
   req: Request,
   res: Response,
-  next: Function
+  next: Function,
 ) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      message: 'Validation failed',
+      message: "Validation failed",
       errors: errors.array(),
     });
   }
@@ -61,23 +61,29 @@ const handleValidationErrors = (
  * }
  */
 router.post(
-  '/search',
+  "/search",
   [
-    body('query').isString().trim().notEmpty().withMessage('Query is required'),
-    body('sessionId').isString().trim().notEmpty().withMessage('Session ID is required'),
-    body('filters.page').optional().isInt({ min: 1 }),
-    body('filters.limit').optional().isInt({ min: 1, max: 50 }),
-    body('filters.priceRange.min').optional().isNumeric(),
-    body('filters.priceRange.max').optional().isNumeric(),
-    body('filters.rating').optional().isFloat({ min: 0, max: 5 }),
-    body('filters.sortBy').optional().isIn([
-      'relevance',
-      'rating',
-      'price-low',
-      'price-high',
-      'newest',
-      'popular',
-    ]),
+    body("query").isString().trim().notEmpty().withMessage("Query is required"),
+    body("sessionId")
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage("Session ID is required"),
+    body("filters.page").optional().isInt({ min: 1 }),
+    body("filters.limit").optional().isInt({ min: 1, max: 50 }),
+    body("filters.priceRange.min").optional().isNumeric(),
+    body("filters.priceRange.max").optional().isNumeric(),
+    body("filters.rating").optional().isFloat({ min: 0, max: 5 }),
+    body("filters.sortBy")
+      .optional()
+      .isIn([
+        "relevance",
+        "rating",
+        "price-low",
+        "price-high",
+        "newest",
+        "popular",
+      ]),
   ],
   handleValidationErrors,
   async (req: Request, res: Response) => {
@@ -91,23 +97,23 @@ router.post(
         searchQuery,
         filters as SearchFilter,
         sessionId,
-        userId
+        userId,
       );
 
       return res.status(200).json({
         success: true,
-        message: 'Search completed successfully',
+        message: "Search completed successfully",
         data: result,
       });
     } catch (error) {
-      logger.error('Search error', error);
+      logger.error("Search error", error);
       return res.status(500).json({
         success: false,
-        message: 'Search failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Search failed",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -122,10 +128,10 @@ router.post(
  * GET /api/courses/suggestions?q=java&limit=5
  */
 router.get(
-  '/suggestions',
+  "/suggestions",
   [
-    query('q').isString().trim().notEmpty().withMessage('Query is required'),
-    query('limit').optional().isInt({ min: 1, max: 10 }),
+    query("q").isString().trim().notEmpty().withMessage("Query is required"),
+    query("limit").optional().isInt({ min: 1, max: 10 }),
   ],
   handleValidationErrors,
   async (req: Request, res: Response) => {
@@ -136,23 +142,23 @@ router.get(
 
       const suggestions = await searchService.getSearchSuggestions(
         searchQuery as string,
-        parseInt(limit as string)
+        parseInt(limit as string),
       );
 
       return res.status(200).json({
         success: true,
-        message: 'Suggestions retrieved successfully',
+        message: "Suggestions retrieved successfully",
         data: suggestions,
       });
     } catch (error) {
-      logger.error('Suggestions error', error);
+      logger.error("Suggestions error", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to get suggestions',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Failed to get suggestions",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -166,12 +172,12 @@ router.get(
  * GET /api/courses/trending?limit=10
  */
 router.get(
-  '/trending',
-  [query('limit').optional().isInt({ min: 1, max: 50 })],
+  "/trending",
+  [query("limit").optional().isInt({ min: 1, max: 50 })],
   handleValidationErrors,
   async (req: Request, res: Response) => {
     try {
-      const limit = parseInt((req.query.limit as string) || '10');
+      const limit = parseInt((req.query.limit as string) || "10");
 
       logger.info(`Trending courses request - Limit: ${limit}`);
 
@@ -179,18 +185,18 @@ router.get(
 
       return res.status(200).json({
         success: true,
-        message: 'Trending courses retrieved successfully',
+        message: "Trending courses retrieved successfully",
         data: courses,
       });
     } catch (error) {
-      logger.error('Trending courses error', error);
+      logger.error("Trending courses error", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to get trending courses',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Failed to get trending courses",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -205,38 +211,40 @@ router.get(
  * POST /api/courses/course_123/similar?limit=5
  */
 router.get(
-  '/:courseId/similar',
+  "/:courseId/similar",
   [
-    query('courseId').isString().trim(),
-    query('limit').optional().isInt({ min: 1, max: 20 }),
+    query("courseId").isString().trim(),
+    query("limit").optional().isInt({ min: 1, max: 20 }),
   ],
   handleValidationErrors,
   async (req: Request, res: Response) => {
     try {
       const { courseId } = req.params;
-      const limit = parseInt((req.query.limit as string) || '5');
+      const limit = parseInt((req.query.limit as string) || "5");
 
-      logger.info(`Similar courses request - Course: ${courseId}, Limit: ${limit}`);
+      logger.info(
+        `Similar courses request - Course: ${courseId}, Limit: ${limit}`,
+      );
 
       const similar = await recommendationService.getSimilarCourses(
         courseId,
-        limit
+        limit,
       );
 
       return res.status(200).json({
         success: true,
-        message: 'Similar courses retrieved successfully',
+        message: "Similar courses retrieved successfully",
         data: similar,
       });
     } catch (error) {
-      logger.error('Similar courses error', error);
+      logger.error("Similar courses error", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to get similar courses',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Failed to get similar courses",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -262,45 +270,49 @@ router.get(
  * }
  */
 router.post(
-  '/recommendations',
+  "/recommendations",
   [
-    body('userId').isString().trim().notEmpty().withMessage('User ID is required'),
-    body('enrolledCourseIds').optional().isArray(),
-    body('browsedCourseIds').optional().isArray(),
-    body('preferredCategories').optional().isArray(),
-    body('preferredLevels').optional().isArray(),
-    body('ratings').optional().isArray(),
-    query('limit').optional().isInt({ min: 1, max: 30 }),
+    body("userId")
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage("User ID is required"),
+    body("enrolledCourseIds").optional().isArray(),
+    body("browsedCourseIds").optional().isArray(),
+    body("preferredCategories").optional().isArray(),
+    body("preferredLevels").optional().isArray(),
+    body("ratings").optional().isArray(),
+    query("limit").optional().isInt({ min: 1, max: 30 }),
   ],
   handleValidationErrors,
   async (req: Request, res: Response) => {
     try {
       const context = req.body as RecommendationContext;
-      const limit = parseInt((req.query.limit as string) || '10');
+      const limit = parseInt((req.query.limit as string) || "10");
 
       logger.info(
-        `Recommendations request - User: ${context.userId}, Limit: ${limit}`
+        `Recommendations request - User: ${context.userId}, Limit: ${limit}`,
       );
 
       const result = await recommendationService.getRecommendations(
         context,
-        limit
+        limit,
       );
 
       return res.status(200).json({
         success: true,
-        message: 'Recommendations generated successfully',
+        message: "Recommendations generated successfully",
         data: result,
       });
     } catch (error) {
-      logger.error('Recommendations error', error);
+      logger.error("Recommendations error", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to generate recommendations',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Failed to generate recommendations",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -320,14 +332,22 @@ router.post(
  * }
  */
 router.post(
-  '/activity',
+  "/activity",
   [
-    body('userId').isString().trim().notEmpty().withMessage('User ID is required'),
-    body('activityType')
-      .isIn(['view', 'enroll', 'rate', 'complete'])
-      .withMessage('Invalid activity type'),
-    body('courseId').isString().trim().notEmpty().withMessage('Course ID is required'),
-    body('data').optional().isObject(),
+    body("userId")
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage("User ID is required"),
+    body("activityType")
+      .isIn(["view", "enroll", "rate", "complete"])
+      .withMessage("Invalid activity type"),
+    body("courseId")
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage("Course ID is required"),
+    body("data").optional().isObject(),
   ],
   handleValidationErrors,
   async (req: Request, res: Response) => {
@@ -335,29 +355,29 @@ router.post(
       const { userId, activityType, courseId, data } = req.body;
 
       logger.info(
-        `Activity recorded - User: ${userId}, Type: ${activityType}, Course: ${courseId}`
+        `Activity recorded - User: ${userId}, Type: ${activityType}, Course: ${courseId}`,
       );
 
       await recommendationService.recordUserActivity(
         userId,
         activityType,
         courseId,
-        data
+        data,
       );
 
       return res.status(201).json({
         success: true,
-        message: 'Activity recorded successfully',
+        message: "Activity recorded successfully",
       });
     } catch (error) {
-      logger.error('Activity recording error', error);
+      logger.error("Activity recording error", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to record activity',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Failed to record activity",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -369,29 +389,26 @@ router.post(
  * @example
  * GET /api/courses/categories
  */
-router.get(
-  '/categories',
-  async (req: Request, res: Response) => {
-    try {
-      logger.info('Categories request');
+router.get("/categories", async (req: Request, res: Response) => {
+  try {
+    logger.info("Categories request");
 
-      const categories = await searchService.getCategories();
+    const categories = await searchService.getCategories();
 
-      return res.status(200).json({
-        success: true,
-        message: 'Categories retrieved successfully',
-        data: categories,
-      });
-    } catch (error) {
-      logger.error('Categories error', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to get categories',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Categories retrieved successfully",
+      data: categories,
+    });
+  } catch (error) {
+    logger.error("Categories error", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get categories",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
-);
+});
 
 /**
  * GET /api/courses/categories/tree
@@ -402,29 +419,26 @@ router.get(
  * @example
  * GET /api/courses/categories/tree
  */
-router.get(
-  '/categories/tree',
-  async (req: Request, res: Response) => {
-    try {
-      logger.info('Category tree request');
+router.get("/categories/tree", async (req: Request, res: Response) => {
+  try {
+    logger.info("Category tree request");
 
-      const categories = await searchService.getCategoryTree();
+    const categories = await searchService.getCategoryTree();
 
-      return res.status(200).json({
-        success: true,
-        message: 'Category tree retrieved successfully',
-        data: categories,
-      });
-    } catch (error) {
-      logger.error('Category tree error', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to get category tree',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Category tree retrieved successfully",
+      data: categories,
+    });
+  } catch (error) {
+    logger.error("Category tree error", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get category tree",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
-);
+});
 
 /**
  * POST /api/courses/categories
@@ -443,12 +457,20 @@ router.get(
  * }
  */
 router.post(
-  '/categories',
+  "/categories",
   [
-    body('id').isString().trim().notEmpty().withMessage('Category ID is required'),
-    body('name').isString().trim().notEmpty().withMessage('Name is required'),
-    body('description').isString().trim().notEmpty().withMessage('Description is required'),
-    body('parentCategory').optional().isString(),
+    body("id")
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage("Category ID is required"),
+    body("name").isString().trim().notEmpty().withMessage("Name is required"),
+    body("description")
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage("Description is required"),
+    body("parentCategory").optional().isString(),
   ],
   handleValidationErrors,
   async (req: Request, res: Response) => {
@@ -461,18 +483,18 @@ router.post(
 
       return res.status(201).json({
         success: true,
-        message: 'Category created successfully',
+        message: "Category created successfully",
         data: created,
       });
     } catch (error) {
-      logger.error('Category creation error', error);
+      logger.error("Category creation error", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to create category',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Failed to create category",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -493,12 +515,12 @@ router.post(
  * }
  */
 router.put(
-  '/categories/:categoryId',
+  "/categories/:categoryId",
   [
-    body('id').isString().trim(),
-    body('name').isString().trim().notEmpty(),
-    body('description').isString().trim().notEmpty(),
-    body('parentCategory').optional().isString(),
+    body("id").isString().trim(),
+    body("name").isString().trim().notEmpty(),
+    body("description").isString().trim().notEmpty(),
+    body("parentCategory").optional().isString(),
   ],
   handleValidationErrors,
   async (req: Request, res: Response) => {
@@ -511,18 +533,18 @@ router.put(
 
       return res.status(200).json({
         success: true,
-        message: 'Category updated successfully',
+        message: "Category updated successfully",
         data: updated,
       });
     } catch (error) {
-      logger.error('Category update error', error);
+      logger.error("Category update error", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to update category',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Failed to update category",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -536,7 +558,7 @@ router.put(
  * DELETE /api/courses/categories/cat_123
  */
 router.delete(
-  '/categories/:categoryId',
+  "/categories/:categoryId",
   async (req: Request, res: Response) => {
     try {
       const { categoryId } = req.params;
@@ -547,17 +569,17 @@ router.delete(
 
       return res.status(200).json({
         success: true,
-        message: 'Category deleted successfully',
+        message: "Category deleted successfully",
       });
     } catch (error) {
-      logger.error('Category deletion error', error);
+      logger.error("Category deletion error", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to delete category',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Failed to delete category",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -571,12 +593,12 @@ router.delete(
  * GET /api/courses/analytics/popular-searches?limit=10
  */
 router.get(
-  '/analytics/popular-searches',
-  [query('limit').optional().isInt({ min: 1, max: 50 })],
+  "/analytics/popular-searches",
+  [query("limit").optional().isInt({ min: 1, max: 50 })],
   handleValidationErrors,
   async (req: Request, res: Response) => {
     try {
-      const limit = parseInt((req.query.limit as string) || '10');
+      const limit = parseInt((req.query.limit as string) || "10");
 
       logger.info(`Popular searches request - Limit: ${limit}`);
 
@@ -584,18 +606,18 @@ router.get(
 
       return res.status(200).json({
         success: true,
-        message: 'Popular searches retrieved successfully',
+        message: "Popular searches retrieved successfully",
         data: popular,
       });
     } catch (error) {
-      logger.error('Popular searches error', error);
+      logger.error("Popular searches error", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to get popular searches',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: "Failed to get popular searches",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 /**
@@ -608,30 +630,27 @@ router.get(
  * @example
  * GET /api/courses/analytics/search/javascript
  */
-router.get(
-  '/analytics/search/:query',
-  async (req: Request, res: Response) => {
-    try {
-      const { query } = req.params;
+router.get("/analytics/search/:query", async (req: Request, res: Response) => {
+  try {
+    const { query } = req.params;
 
-      logger.info(`Search analytics request - Query: ${query}`);
+    logger.info(`Search analytics request - Query: ${query}`);
 
-      const analytics = await searchService.getSearchAnalytics(query);
+    const analytics = await searchService.getSearchAnalytics(query);
 
-      return res.status(200).json({
-        success: true,
-        message: 'Search analytics retrieved successfully',
-        data: analytics,
-      });
-    } catch (error) {
-      logger.error('Search analytics error', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to get search analytics',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Search analytics retrieved successfully",
+      data: analytics,
+    });
+  } catch (error) {
+    logger.error("Search analytics error", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get search analytics",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
-);
+});
 
 export default router;
