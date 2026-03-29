@@ -18,6 +18,10 @@ pub mod vrf_system;
 #[cfg(test)]
 mod vrf_system_test;
 
+pub mod cross_protocol_bridge;
+#[cfg(test)]
+mod cross_protocol_bridge_test;
+
 pub mod progress;
 pub mod event_logger;
 pub mod user_profile;

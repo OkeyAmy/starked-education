@@ -130,6 +130,10 @@ app.use('/api/vrf', vrfRoutes);
 const translationRoutes = require('./routes/translation');
 app.use('/api/translate', translationRoutes);
 
+// Cross-Protocol Bridge routes
+const crossProtocolBridgeRoutes = require('./routes/crossProtocolBridge');
+app.use('/api/cross-protocol-bridge', crossProtocolBridgeRoutes);
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
