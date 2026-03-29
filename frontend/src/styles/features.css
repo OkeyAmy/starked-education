@@ -1,0 +1,108 @@
+:root {
+  --primary-accent: #00d4ff;
+  --secondary-accent: #ff00c8;
+  --background-dark: #0a0a0c;
+  --surface: #121216;
+  --surface-border: #1e1e24;
+  --text-main: #e0e0e0;
+  --text-dim: #909090;
+  --success: #00ff88;
+  --warning: #ffcc00;
+  --error: #ff4444;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-blur: blur(12px);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.feature-container {
+  padding: 2rem;
+  background: var(--background-dark);
+  color: var(--text-main);
+  border-radius: 1.5rem;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--surface-border);
+  margin: 1rem;
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: var(--transition);
+}
+
+.glass-card:hover {
+  border-color: var(--primary-accent);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0, 212, 255, 0.2);
+}
+
+.btn-premium {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  border: none;
+  background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-premium:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+.btn-premium:disabled {
+  background: #444;
+  cursor: not-allowed;
+}
+
+.grid-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+/* Proctoring Specific */
+.video-overlay {
+  position: relative;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 2px solid var(--surface-border);
+}
+
+.video-overlay.active {
+  border-color: var(--primary-accent);
+}
+
+.video-overlay.suspicious {
+  border-color: var(--error);
+  animation: pulse-danger 2s infinite;
+}
+
+@keyframes pulse-danger {
+  0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 20px rgba(255, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
+}
+
+/* Charts & Graphs Mocking Styles */
+.stat-bar {
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.stat-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--primary-accent), var(--success));
+  transition: width 1s ease-in-out;
+}

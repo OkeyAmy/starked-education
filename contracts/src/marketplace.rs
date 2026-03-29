@@ -326,4 +326,23 @@ impl MarketplaceContract {
             (dispute_id, dispute.status),
         );
     }
+
+    /// Escrow: Initiate a secure transaction with time-lock
+    pub fn initiate_escrow(env: Env, buyer: Address, listing_id: u64, timeout: u64) -> u64 {
+        buyer.require_auth();
+        
+        // Logical escrow ID
+        let escrow_id = env.storage().instance().get::<_, u64>(&symbol_short!("esc_cnt")).unwrap_or(0) + 1;
+        env.storage().instance().set(&symbol_short!("esc_cnt"), &escrow_id);
+        
+        let release_time = env.ledger().timestamp() + timeout;
+        env.storage().instance().set(&symbol_short!("escrow_t"), &release_time);
+        
+        env.events().publish(
+            (symbol_short!("market"), symbol_short!("escrow")),
+            (escrow_id, buyer, listing_id, release_time),
+        );
+        
+        escrow_id
+    }
 }

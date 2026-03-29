@@ -33,6 +33,10 @@ mod courseMetadata_test;
 #[cfg(test)]
 mod syncCoordination_test;
 pub mod utils;
+pub mod proctoring;
+pub mod tokenomics;
+pub mod bridge;
+ pub mod marketplace;
 
 
 /// Optimized user profile with packed storage
