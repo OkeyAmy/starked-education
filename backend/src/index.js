@@ -122,6 +122,10 @@ app.use('/api/bridge', bridgeRoutes);
 const timeLockCredentialsRoutes = require('./routes/timeLockCredentials');
 app.use('/api/time-lock', timeLockCredentialsRoutes);
 
+// VRF (Verifiable Random Function) routes
+const vrfRoutes = require('./routes/vrf');
+app.use('/api/vrf', vrfRoutes);
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
