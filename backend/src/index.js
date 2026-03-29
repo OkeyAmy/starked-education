@@ -98,6 +98,10 @@ app.use('/api/analytics', analyticsRoutes);
 const autonomousAgentsRoutes = require('./routes/autonomousAgents');
 app.use('/api/autonomous-agents', autonomousAgentsRoutes);
 
+// Gamification routes
+const gamificationRoutes = require('./routes/gamification');
+app.use('/api/gamification', gamificationRoutes);
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
