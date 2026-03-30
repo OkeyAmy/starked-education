@@ -10,6 +10,18 @@ pub mod dynamic_nft;
 #[cfg(test)]
 mod dynamic_nft_test;
 
+pub mod time_lock_credential;
+#[cfg(test)]
+mod time_lock_credential_test;
+
+pub mod vrf_system;
+#[cfg(test)]
+mod vrf_system_test;
+
+pub mod cross_protocol_bridge;
+#[cfg(test)]
+mod cross_protocol_bridge_test;
+
 pub mod progress;
 pub mod event_logger;
 pub mod user_profile;
