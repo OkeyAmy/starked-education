@@ -8,6 +8,7 @@ yarn-error.log*
 .pnpm-debug.log*
 bun.lockb
 package-lock.json
+pnpm-lock.yaml
 .next/
 out/
 dist/
@@ -19,6 +20,13 @@ coverage/
 cypress/downloads/
 cypress/screenshots/
 cypress/videos/
+
+# Test output / diagnostic files
+test_output*.txt
+load_test_output*.txt
+rate_limit*.txt
+jest_out.txt
+tsc_errors.txt
 
 # Environment & secrets
 .env

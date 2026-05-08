@@ -151,7 +151,7 @@ pub enum DynamicNFTKey {
     AchievementBadge(u64),
 }
 
-/// ERC-721 compatible events
+/// Soroban NFT events
 #[contracttype]
 pub enum NFTEvent {
     Transfer(Address, Address, u64), // from, to, token_id

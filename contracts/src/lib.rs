@@ -18,10 +18,6 @@ pub mod vrf_system;
 #[cfg(test)]
 mod vrf_system_test;
 
-pub mod cross_protocol_bridge;
-#[cfg(test)]
-mod cross_protocol_bridge_test;
-
 pub mod progress;
 pub mod event_logger;
 pub mod user_profile;
@@ -47,8 +43,7 @@ mod syncCoordination_test;
 pub mod utils;
 pub mod proctoring;
 pub mod tokenomics;
-pub mod bridge;
- pub mod marketplace;
+pub mod marketplace;
 
 
 /// Optimized user profile with packed storage

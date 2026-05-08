@@ -32,7 +32,7 @@ const StakingDashboard = () => {
            
            <div style={{ marginTop: '1.5rem' }}>
               <label>Amount (Tokens)</label>
-              <input type="range" min="10" max="2500" value={stakeAmount} onChange={(e) => setStakeAmount(e.target.value)} style={{ width: '100%', accentColor: var('--primary-accent') }} />
+              <input type="range" min="10" max="2500" value={stakeAmount} onChange={(e) => setStakeAmount(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary-accent)' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
                  <span>10</span>
                  <span style={{ fontWeight: 800, color: '#00ff88' }}>{stakeAmount} STARK</span>
@@ -80,7 +80,7 @@ const StakingDashboard = () => {
            <div style={{ marginTop: '2rem', textAlign: 'center' }}>
               <h4>Governance Power (Vp)</h4>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                 <div style={{ fontSize: '2.5rem', fontWeight: 900, color: var('--secondary-accent') }}>420</div>
+                 <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--secondary-accent)' }}>420</div>
                  <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
                     <p style={{ fontSize: '0.8rem', margin: 0 }}>VOTING WEIGHT</p>
                     <p style={{ fontSize: '0.6rem', color: '#888', margin: 0 }}>Quadratic Factor: 8.2x</p>

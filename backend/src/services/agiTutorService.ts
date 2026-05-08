@@ -99,7 +99,7 @@ export class AGITutorService {
     const semanticAnalysis = await this.analyzeSemanticContent(studentResponse);
     const conceptualUnderstanding = await this.analyzeConceptualUnderstanding(studentResponse);
     const reasoningProcess = await this.analyzeReasoningProcess(studentResponse);
-    the emotionalState = await this.analyzeEmotionalState(studentResponse, confidenceLevel);
+    const emotionalState = await this.analyzeEmotionalState(studentResponse, confidenceLevel);
 
     // AGI reasoning for comprehensive assessment
     const comprehensiveAnalysis = await this.reasoningEngine.causalInference({
@@ -264,7 +264,7 @@ export class AGITutorService {
     // Multi-dimensional progress analysis
     const knowledgeProgress = await this.analyzeKnowledgeProgress(learningData);
     const skillDevelopment = await this.analyzeSkillDevelopment(learningData);
-    the emotionalGrowth = await this.analyzeEmotionalGrowth(learningData);
+    const emotionalGrowth = await this.analyzeEmotionalGrowth(learningData);
     const metacognitiveDevelopment = await this.analyzeMetacognitiveDevelopment(learningData);
 
     // AGI reasoning for comprehensive progress assessment

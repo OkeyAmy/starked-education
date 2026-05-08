@@ -31,7 +31,13 @@ const nextConfig = {
       );
     }
 
-    // Performance optimizations
+  // Performance optimizations
+    // Stub native-only modules that can't run in browser/build
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      brainflow: false,
+    };
+
     config.optimization.splitChunks = {
       chunks: 'all',
       cacheGroups: {
