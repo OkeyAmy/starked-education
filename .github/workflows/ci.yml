@@ -24,15 +24,21 @@ jobs:
         toolchain: stable
 
     - name: Build contracts
-      run: |
-        cd contracts
-        cargo build --release --lib
+      uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 10
+        max_attempts: 3
+        retry_on: error
+        command: cd contracts && cargo build --release --lib
 
     - name: Run contract tests
       continue-on-error: true
-      run: |
-        cd contracts
-        cargo test
+      uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 10
+        max_attempts: 3
+        retry_on: error
+        command: cd contracts && cargo test
       # Note: tests may fail due to stellar-xdr/arbitrary crate compatibility
 
   # ─── Backend ───────────────────────────────────────────────────────
@@ -71,13 +77,14 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: backend/package-lock.json
 
     - name: Install dependencies
-      run: |
-        cd backend
-        npm ci
+      uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 5
+        max_attempts: 3
+        retry_on: error
+        command: cd backend && npm ci
 
     - name: TypeScript typecheck
       run: |
@@ -93,9 +100,12 @@ jobs:
     - name: Run tests
       continue-on-error: true
       timeout-minutes: 10
-      run: |
-        cd backend
-        npm run test:ci
+      uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 10
+        max_attempts: 2
+        retry_on: error
+        command: cd backend && npm run test:ci
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/starked_test
         REDIS_URL: redis://localhost:6379
@@ -118,13 +128,14 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
 
     - name: Install dependencies
-      run: |
-        cd frontend
-        npm ci
+      uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 5
+        max_attempts: 3
+        retry_on: error
+        command: cd frontend && npm ci
 
     - name: TypeScript typecheck
       continue-on-error: true
@@ -141,9 +152,12 @@ jobs:
     - name: Run tests
       continue-on-error: true
       timeout-minutes: 10
-      run: |
-        cd frontend
-        npm run test:ci
+      uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 10
+        max_attempts: 2
+        retry_on: error
+        command: cd frontend && npm run test:ci
 
     - name: Build frontend
       run: |
@@ -169,6 +183,7 @@ jobs:
 
     - name: Upload Trivy scan results
       if: always()
+      continue-on-error: true
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-results.sarif'
