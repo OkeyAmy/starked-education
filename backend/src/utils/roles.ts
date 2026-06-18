@@ -43,6 +43,9 @@ export const PERMISSIONS = {
   ANALYTICS_READ: 'analytics:read',
   REPORT_GENERATE: 'report:generate',
   
+  // Admin panel permissions
+  ADMIN_PANEL: 'admin:panel',
+
   // System administration permissions
   SYSTEM_CONFIG: 'system:config',
   SYSTEM_MANAGE: 'system:manage',

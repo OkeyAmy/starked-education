@@ -152,6 +152,10 @@ v1Router.use('/translate', translationRoutes);
 const crossProtocolBridgeRoutes = require('./routes/crossProtocolBridge');
 v1Router.use('/cross-protocol-bridge', crossProtocolBridgeRoutes);
 
+// Admin dashboard routes
+const adminRoutes = require('./routes/admin');
+v1Router.use('/admin', adminRoutes);
+
 // Mount v1 router at /api/v1
 app.use('/api/v1', v1Router);
 
