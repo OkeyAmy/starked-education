@@ -619,3 +619,68 @@ export const bulkGradeSchema: ValidationSchema = {
 export const validateEnrollment = (req: Request, res: Response, next: NextFunction) => next();
 export const validateEnrollmentUpdate = (req: Request, res: Response, next: NextFunction) => next();
 export const validatePayment = (req: Request, res: Response, next: NextFunction) => next();
+
+// Federated Learning Validation Schemas
+
+const MODEL_HASH_REGEX = /^[a-f0-9]{64}$/i; // SHA-256 hex
+const MAX_MODEL_PAYLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+
+const differentialPrivacySchema = Joi.object({
+  epsilon: Joi.number().positive().max(10).optional(),
+  delta: Joi.number().positive().max(1).optional(),
+  mechanism: Joi.string().valid('laplace', 'gaussian').optional(),
+});
+
+export const initializeSessionSchema: ValidationSchema = {
+  body: Joi.object({
+    modelType: Joi.string().min(1).max(100).required()
+      .messages({ 'any.required': '"modelType" is required', 'string.empty': '"modelType" cannot be empty' }),
+    minParticipants: Joi.number().integer().min(1).max(10000).required()
+      .messages({ 'any.required': '"minParticipants" is required', 'number.base': '"minParticipants" must be a number' }),
+    rounds: Joi.number().integer().min(1).max(10000).required()
+      .messages({ 'any.required': '"rounds" is required' }),
+    aggregationStrategy: Joi.string().valid('fedAvg', 'fedProx', 'scaffold', 'mime').required()
+      .messages({ 'any.required': '"aggregationStrategy" is required', 'any.only': '"aggregationStrategy" must be one of: fedAvg, fedProx, scaffold, mime' }),
+    modelArchitecture: Joi.object().optional(),
+    initialWeights: Joi.any().optional(),
+  }),
+};
+
+export const registerParticipantSchema: ValidationSchema = {
+  body: Joi.object({
+    sessionId: Joi.string().min(1).max(255).required()
+      .messages({ 'any.required': '"sessionId" is required' }),
+    publicKey: Joi.string().min(1).max(1024).required()
+      .messages({ 'any.required': '"publicKey" is required', 'string.empty': '"publicKey" cannot be empty' }),
+    institutionId: Joi.string().min(1).max(255).required()
+      .messages({ 'any.required': '"institutionId" is required' }),
+    endpoint: Joi.string().uri().required()
+      .messages({ 'any.required': '"endpoint" is required', 'string.uri': '"endpoint" must be a valid URI' }),
+    capabilities: Joi.object().optional(),
+    dataInfo: Joi.object().optional(),
+  }),
+};
+
+export const submitModelUpdateSchema: ValidationSchema = {
+  body: Joi.object({
+    roundNumber: Joi.number().integer().min(0).required()
+      .messages({ 'any.required': '"roundNumber" is required', 'number.min': '"roundNumber" must be >= 0' }),
+    modelHash: Joi.string().pattern(MODEL_HASH_REGEX).required()
+      .messages({ 'any.required': '"modelHash" is required', 'string.pattern.base': '"modelHash" must be a valid SHA-256 hex string' }),
+    gradientShape: Joi.array().items(Joi.number().integer().positive()).min(1).required()
+      .messages({ 'any.required': '"gradientShape" is required', 'array.min': '"gradientShape" must have at least one dimension' }),
+    privacyParams: differentialPrivacySchema.optional(),
+    weights: Joi.any().optional(),
+    validationData: Joi.any().optional(),
+  }).custom((value, helpers) => {
+    const payloadSize = Buffer.byteLength(JSON.stringify(value), 'utf8');
+    if (payloadSize > MAX_MODEL_PAYLOAD_BYTES) {
+      return helpers.error('any.invalid');
+    }
+    return value;
+  }).messages({ 'any.invalid': `Model payload exceeds maximum size of ${MAX_MODEL_PAYLOAD_BYTES / (1024 * 1024)}MB` }),
+};
+
+export const validateFederatedSession = validateRequestSchema(initializeSessionSchema);
+export const validateFederatedParticipant = validateRequestSchema(registerParticipantSchema);
+export const validateFederatedModelUpdate = validateRequestSchema(submitModelUpdateSchema);

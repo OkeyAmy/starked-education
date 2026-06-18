@@ -5,6 +5,58 @@ const ModelValidator = require('../services/federatedLearning/ModelValidator');
 const AnalyticsDashboard = require('../services/federatedLearning/AnalyticsDashboard');
 const ModelVersioning = require('../services/federatedLearning/ModelVersioning');
 const logger = require('../utils/logger');
+const Joi = require('joi');
+
+const MODEL_HASH_REGEX = /^[a-f0-9]{64}$/i;
+const MAX_MODEL_PAYLOAD_BYTES = 10 * 1024 * 1024;
+
+const differentialPrivacySchema = Joi.object({
+  epsilon: Joi.number().positive().max(10).optional(),
+  delta: Joi.number().positive().max(1).optional(),
+  mechanism: Joi.string().valid('laplace', 'gaussian').optional(),
+});
+
+const initSessionBodySchema = Joi.object({
+  modelType: Joi.string().min(1).max(100).required(),
+  minParticipants: Joi.number().integer().min(1).max(10000).required(),
+  rounds: Joi.number().integer().min(1).max(10000).required(),
+  aggregationStrategy: Joi.string().valid('fedAvg', 'fedProx', 'scaffold', 'mime').required(),
+  modelArchitecture: Joi.object().optional(),
+  initialWeights: Joi.any().optional(),
+});
+
+const registerParticipantBodySchema = Joi.object({
+  sessionId: Joi.string().min(1).max(255).required(),
+  publicKey: Joi.string().min(1).max(1024).required(),
+  institutionId: Joi.string().min(1).max(255).required(),
+  endpoint: Joi.string().uri().required(),
+  capabilities: Joi.object().optional(),
+  dataInfo: Joi.object().optional(),
+});
+
+const submitModelUpdateBodySchema = Joi.object({
+  roundNumber: Joi.number().integer().min(0).required(),
+  modelHash: Joi.string().pattern(MODEL_HASH_REGEX).required(),
+  gradientShape: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
+  privacyParams: differentialPrivacySchema.optional(),
+  weights: Joi.any().optional(),
+  validationData: Joi.any().optional(),
+});
+
+/**
+ * Validate req.body against a Joi schema. Returns a 400 response and false on failure,
+ * or returns true if valid.
+ */
+function validateBody(schema, req, res) {
+  const { error } = schema.validate(req.body, { abortEarly: false });
+  if (!error) return true;
+  res.status(400).json({
+    success: false,
+    error: 'Validation failed',
+    details: error.details.map(d => ({ field: d.path.join('.'), message: d.message })),
+  });
+  return false;
+}
 
 class FederatedLearningController {
   constructor() {
@@ -59,13 +111,9 @@ class FederatedLearningController {
   // Session Management Endpoints
   async initializeSession(req, res) {
     try {
+      if (!validateBody(initSessionBodySchema, req, res)) return;
+
       const { modelArchitecture, initialWeights } = req.body;
-      
-      if (!modelArchitecture) {
-        return res.status(400).json({
-          error: 'Model architecture is required'
-        });
-      }
 
       const sessionId = await this.coordinator.initializeSession(modelArchitecture, initialWeights);
       
@@ -120,17 +168,9 @@ class FederatedLearningController {
   // Participant Management Endpoints
   async registerParticipant(req, res) {
     try {
+      if (!validateBody(registerParticipantBodySchema, req, res)) return;
+
       const participantInfo = req.body;
-      
-      // Validate required fields
-      const requiredFields = ['institutionId', 'endpoint', 'dataInfo'];
-      for (const field of requiredFields) {
-        if (!participantInfo[field]) {
-          return res.status(400).json({
-            error: `${field} is required`
-          });
-        }
-      }
 
       const participantId = await this.coordinator.registerParticipant(participantInfo);
       
@@ -212,7 +252,19 @@ class FederatedLearningController {
     try {
       const { participantId } = req.params;
       const updateData = req.body;
-      
+
+      if (!validateBody(submitModelUpdateBodySchema, req, res)) return;
+
+      // Guard oversized payloads (defence-in-depth; body-parser limits may vary)
+      const payloadSize = Buffer.byteLength(JSON.stringify(updateData), 'utf8');
+      if (payloadSize > MAX_MODEL_PAYLOAD_BYTES) {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          details: [{ field: 'body', message: `Model payload exceeds maximum size of ${MAX_MODEL_PAYLOAD_BYTES / (1024 * 1024)}MB` }],
+        });
+      }
+
       // Validate participant
       const participant = this.coordinator.participants.get(participantId);
       if (!participant) {

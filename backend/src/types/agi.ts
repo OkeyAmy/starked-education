@@ -287,3 +287,40 @@ export interface EmotionalAnalysis {
   copingStrategies: string[];
   supportNeeded: string[];
 }
+
+// Federated Learning Payload Types
+
+export type AggregationStrategy = 'fedAvg' | 'fedProx' | 'scaffold' | 'mime';
+
+export interface InitializeSessionPayload {
+  modelType: string;
+  minParticipants: number;
+  rounds: number;
+  aggregationStrategy: AggregationStrategy;
+  modelArchitecture?: Record<string, unknown>;
+  initialWeights?: unknown;
+}
+
+export interface RegisterParticipantPayload {
+  sessionId: string;
+  publicKey: string;
+  institutionId: string;
+  endpoint: string;
+  capabilities?: Record<string, unknown>;
+  dataInfo?: Record<string, unknown>;
+}
+
+export interface DifferentialPrivacyParams {
+  epsilon?: number;
+  delta?: number;
+  mechanism?: 'laplace' | 'gaussian';
+}
+
+export interface SubmitModelUpdatePayload {
+  roundNumber: number;
+  modelHash: string;
+  gradientShape: number[];
+  privacyParams?: DifferentialPrivacyParams;
+  weights?: unknown;
+  validationData?: unknown;
+}
