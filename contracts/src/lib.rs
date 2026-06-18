@@ -1,29 +1,16 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String};
 
-// NOTE: Non-core modules disabled for build compatibility.
-// Original code preserved in files; re-enable after SDK upgrade.
-// pub mod credentials;
-// pub mod credential_registry;
-// pub mod dynamic_nft;
-// pub mod time_lock_credential;
-// pub mod vrf_system;
-// pub mod progress;
-// pub mod event_logger;
-// pub mod user_profile;
-// pub mod analyticsStorage;
-// pub mod eventLogger;
-// pub mod courseMetadata;
-// pub mod syncCoordination;
-// pub mod utils;
-// pub mod proctoring;
-// pub mod tokenomics;
-// pub mod governance;
-// pub mod governance_test;
+pub mod utils;
+pub mod user_profile;
+pub mod tokenomics;
 pub mod governance;
 #[cfg(test)]
 pub mod governance_test;
-// pub mod marketplace;
+#[cfg(test)]
+pub mod tokenomics_test;
+#[cfg(test)]
+pub mod user_profile_test;
 
 /// Core storage keys
 #[contracttype]

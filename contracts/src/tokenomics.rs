@@ -1,6 +1,7 @@
 #![no_std]
+use crate::user_profile::UserProfileContractClient;
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, Address, Env, String, Vec, U256,
+    contract, contractimpl, contracttype, symbol_short, Address, Env, String, Symbol, Vec, U256,
 };
 
 #[contracttype]
@@ -13,6 +14,8 @@ pub enum TokenomicsKey {
     Proposal(u64),
     ProposalVote(u64, Address),
     ProposalCount,
+    ProfileContract,
+    AchievementMultiplier(Address), // Store current multiplier bps for a staker
 }
 
 #[contracttype]
@@ -44,12 +47,15 @@ pub struct TokenomicsContract;
 #[contractimpl]
 impl TokenomicsContract {
     /// Initialize tokenomics system
-    pub fn initialize(env: Env, admin: Address) {
+    pub fn initialize(env: Env, admin: Address, profile_contract: Address) {
         admin.require_auth();
         env.storage()
             .instance()
             .set(&TokenomicsKey::ProposalCount, &0u64);
         env.storage().instance().set(&TokenomicsKey::StakePoolTotal, &0u64);
+        env.storage()
+            .instance()
+            .set(&TokenomicsKey::ProfileContract, &profile_contract);
     }
 
     /// Distribute rewards for learning achievements
@@ -93,6 +99,9 @@ impl TokenomicsContract {
                       else if lock_duration >= 604800 { 500 }
                       else { 100 };
 
+        // Calculate achievement-based multiplier
+        let multiplier = Self::refresh_achievement_multiplier(env.clone(), staker.clone());
+
         let stake = Stake {
             staker: staker.clone(),
             amount,
@@ -102,13 +111,14 @@ impl TokenomicsContract {
         };
 
         env.storage().persistent().set(&TokenomicsKey::StakePool(staker.clone()), &stake);
-        
+        env.storage().persistent().set(&TokenomicsKey::AchievementMultiplier(staker.clone()), &multiplier);
+
         let pool_total: u64 = env.storage().instance().get(&TokenomicsKey::StakePoolTotal).unwrap_or(0);
         env.storage().instance().set(&TokenomicsKey::StakePoolTotal, &(pool_total + amount));
 
         env.events().publish(
             (symbol_short!("token"), symbol_short!("stake")),
-            (staker, amount, lock_duration),
+            (staker, amount, lock_duration, multiplier),
         );
     }
 
@@ -124,8 +134,19 @@ impl TokenomicsContract {
         }
 
         let time_elapsed = now - stake.start_time;
-        // Reward = amount * APY * (time / year)
-        let reward = (stake.amount as u128 * stake.apy_bps as u128 * time_elapsed as u128 / (31536000 * 10000)) as u64;
+
+        // Get stored achievement multiplier, or refresh if missing
+        let multiplier_bps: u32 = env.storage()
+            .persistent()
+            .get(&TokenomicsKey::AchievementMultiplier(staker.clone()))
+            .unwrap_or_else(|| {
+                let m = Self::refresh_achievement_multiplier(env.clone(), staker.clone());
+                env.storage().persistent().set(&TokenomicsKey::AchievementMultiplier(staker.clone()), &m);
+                m
+            });
+
+        // Reward = amount * APY * (time / year) * multiplier
+        let reward = (stake.amount as u128 * stake.apy_bps as u128 * time_elapsed as u128 * multiplier_bps as u128 / (31536000 * 10000 * 10000)) as u64;
 
         let total_return = stake.amount + reward;
         
@@ -136,13 +157,14 @@ impl TokenomicsContract {
             .set(&TokenomicsKey::TokenBalance(staker.clone(), 0), &(balance + total_return));
 
         env.storage().persistent().remove(&TokenomicsKey::StakePool(staker.clone()));
+        env.storage().persistent().remove(&TokenomicsKey::AchievementMultiplier(staker.clone()));
 
         let pool_total: u64 = env.storage().instance().get(&TokenomicsKey::StakePoolTotal).unwrap_or(0);
         env.storage().instance().set(&TokenomicsKey::StakePoolTotal, &(pool_total - stake.amount));
 
         env.events().publish(
             (symbol_short!("token"), symbol_short!("unstake")),
-            (staker, total_return),
+            (staker, total_return, multiplier_bps),
         );
     }
 
@@ -232,6 +254,35 @@ impl TokenomicsContract {
             (symbol_short!("scholar"), symbol_short!("return")),
             amount,
         );
+    }
+
+    /// Recalculate and update the achievement multiplier for a staker.
+    /// Queries the user profile contract for verified achievement data.
+    /// Returns the multiplier in basis points (10000 = 1.0x, capped at 20000 = 2.0x).
+    pub fn refresh_achievement_multiplier(env: Env, user: Address) -> u32 {
+        let profile_contract: Address = env.storage()
+            .instance()
+            .get(&TokenomicsKey::ProfileContract)
+            .unwrap_or_else(|| panic!("Profile contract not configured"));
+
+        // Query user profile contract for multiplier contribution in bps
+        let client = UserProfileContractClient::new(&env, &profile_contract);
+        let additional_bps = client.get_achievement_mult_bps(&user);
+
+        // Base multiplier 1.0x (10000 bps) + contribution, capped at 2.0x (20000 bps)
+        let multiplier_bps = core::cmp::min(10000u32 + additional_bps, 20000u32);
+
+        // Store the multiplier
+        env.storage()
+            .persistent()
+            .set(&TokenomicsKey::AchievementMultiplier(user.clone()), &multiplier_bps);
+
+        env.events().publish(
+            (symbol_short!("token"), Symbol::new(&env, "multiplier")),
+            (user, multiplier_bps),
+        );
+
+        multiplier_bps
     }
 
     pub fn balance_of(env: Env, user: Address, token_type: u8) -> u64 {

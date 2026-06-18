@@ -106,6 +106,7 @@ fn test_add_achievement() {
         &achievement_title,
         &achievement_description,
         &badge_url,
+        &0u32,
     );
 
     assert!(achievement_id > 0);
@@ -117,8 +118,9 @@ fn test_add_achievement() {
     assert_eq!(achievement.user, user);
     assert_eq!(achievement.title, achievement_title);
     assert_eq!(achievement.description, achievement_description);
-    assert_eq!(achievement.badge_url, badge_url);
-    assert_eq!(achievement.verified, false);
+    assert_eq!(achievement.tier, 0u32);
+    assert_eq!(achievement.weight, 1u32);
+    assert_eq!((achievement.timestamp & 1u64) != 0, false);
 }
 
 #[test]
@@ -137,8 +139,8 @@ fn test_get_user_achievements() {
     let achievement_title2 = String::from_str(&env, "Second Achievement");
     let achievement_desc2 = String::from_str(&env, "Second milestone");
 
-    let id1 = client.add_achievement(&user, &achievement_title1, &achievement_desc1, &None);
-    let id2 = client.add_achievement(&user, &achievement_title2, &achievement_desc2, &None);
+    let id1 = client.add_achievement(&user, &achievement_title1, &achievement_desc1, &None, &0u32);
+    let id2 = client.add_achievement(&user, &achievement_title2, &achievement_desc2, &None, &0u32);
 
     let achievements = client.get_user_achievements(&user);
     assert_eq!(achievements.len(), 2);
@@ -175,11 +177,11 @@ fn test_verify_achievement() {
     let achievement_desc = String::from_str(&env, "Needs verification");
 
     let achievement_id =
-        client.add_achievement(&user, &achievement_title, &achievement_desc, &None);
+        client.add_achievement(&user, &achievement_title, &achievement_desc, &None, &0u32);
 
     // Initially, achievement should not be verified
     let achievement = client.get_achievement(&achievement_id).unwrap();
-    assert_eq!(achievement.verified, false);
+    assert_eq!((achievement.timestamp & 1u64) != 0, false);
 
     // Verify the achievement
     let result = client.verify_achievement(&admin, &achievement_id);
@@ -187,7 +189,7 @@ fn test_verify_achievement() {
 
     // Now the achievement should be verified
     let achievement = client.get_achievement(&achievement_id).unwrap();
-    assert_eq!(achievement.verified, true);
+    assert_eq!((achievement.timestamp & 1u64) != 0, true);
 }
 
 #[test]

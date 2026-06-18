@@ -4,6 +4,16 @@ use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, Address, Env, String, Vec, U256,
 };
 
+/// Achievement tier with weight
+#[contracttype]
+#[derive(Clone)]
+pub enum AchievementTier {
+    Bronze = 0,   // Course completion - weight 1
+    Silver = 1,   // Multiple courses - weight 2
+    Gold = 2,     // Advanced credentials - weight 3
+    Platinum = 3, // Degree-level - weight 4
+}
+
 /// Optimized user profile with packed storage
 #[contracttype]
 #[derive(Clone)]
@@ -71,6 +81,8 @@ pub struct Achievement {
     pub description: String,
     pub timestamp: u64,     // Packed earned_at and verification status
     pub badge_hash: String, // Hash of badge URL
+    pub tier: u32,          // 0-3 mapping to AchievementTier
+    pub weight: u32,        // Computed weight value based on tier
 }
 
 #[contract]
@@ -228,6 +240,68 @@ impl UserProfileContract {
         }
     }
 
+    /// Map an achievement tier to its numeric weight value
+    pub fn get_achievement_tier_weight(tier: u32) -> u32 {
+        match tier {
+            0 => 1,  // Bronze
+            1 => 2,  // Silver
+            2 => 3,  // Gold
+            3 => 4,  // Platinum
+            _ => 1,  // Default to Bronze
+        }
+    }
+
+    /// Get the total weight of all verified achievements for a user
+    pub fn get_user_achievement_weight(env: Env, user: Address) -> u32 {
+        let mut total_weight: u32 = 0;
+        let user_achievements: Vec<u64> = env
+            .storage()
+            .instance()
+            .get(&ProfileKey::UserAchievements(user))
+            .unwrap_or_else(|| Vec::new(&env));
+
+        for achievement_id in user_achievements.iter() {
+            if let Some(achievement) = env
+                .storage()
+                .instance()
+                .get::<_, Achievement>(&ProfileKey::Achievement(achievement_id))
+            {
+                if (achievement.timestamp & 1u64) != 0 {
+                    total_weight += achievement.weight;
+                }
+            }
+        }
+        total_weight
+    }
+
+    /// Get the multiplier contribution in basis points for a user's verified achievements.
+    /// Each verified achievement contributes (weight + 1) * 500 bps:
+    ///   Bronze (weight 1): +1000 bps (0.1x)
+    ///   Silver (weight 2): +1500 bps (0.15x)
+    ///   Gold   (weight 3): +2000 bps (0.2x)
+    ///   Platinum (weight 4): +2500 bps (0.25x)
+    pub fn get_achievement_mult_bps(env: Env, user: Address) -> u32 {
+        let mut total_bps: u32 = 0;
+        let user_achievements: Vec<u64> = env
+            .storage()
+            .instance()
+            .get(&ProfileKey::UserAchievements(user))
+            .unwrap_or_else(|| Vec::new(&env));
+
+        for achievement_id in user_achievements.iter() {
+            if let Some(achievement) = env
+                .storage()
+                .instance()
+                .get::<_, Achievement>(&ProfileKey::Achievement(achievement_id))
+            {
+                if (achievement.timestamp & 1u64) != 0 {
+                    total_bps += (achievement.weight + 1) * 500;
+                }
+            }
+        }
+        total_bps
+    }
+
     /// Add an achievement to a user with optimized storage
     pub fn add_achievement(
         env: Env,
@@ -235,6 +309,7 @@ impl UserProfileContract {
         title: String,
         description: String,
         badge_url: Option<String>,
+        tier: u32,
     ) -> u64 {
         user.require_auth();
 
@@ -246,6 +321,8 @@ impl UserProfileContract {
         let badge_hash =
             Self::generate_string_hash(&badge_url.unwrap_or_else(|| String::from_str(&env, "")));
 
+        let weight = Self::get_achievement_tier_weight(tier);
+
         // Create achievement
         let achievement = Achievement {
             id: achievement_id,
@@ -254,6 +331,8 @@ impl UserProfileContract {
             description,
             timestamp: packed_timestamp,
             badge_hash,
+            tier,
+            weight,
         };
 
         // Store the achievement
