@@ -401,3 +401,313 @@ pub fn get_credentials_expiring_soon(env: &Env, within_seconds: u64) -> Vec<u64>
 
     expiring_soon
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//  Multi-Signature Credential Registry Extension
+// ═══════════════════════════════════════════════════════════════════
+
+/// Multi-signature credential registry entry
+#[contracttype]
+#[derive(Clone)]
+pub struct MultiSigCredentialRegistry {
+    pub id: u64,
+    pub threshold: u32,
+    pub signers: Vec<Address>,
+    pub recipient: Address,
+    pub title: String,
+    pub description: String,
+    pub course_id: String,
+    pub issued_at: u64,
+    pub expires_at: u64,
+    pub status: CredentialStatus,
+    pub ipfs_hash: String,
+    pub signature_count: u32,
+    pub renewal_count: u32,
+    pub last_renewed_at: Option<u64>,
+}
+
+/// Multi-signature credential registry storage keys
+#[contracttype]
+pub enum MultiSigRegistryKey {
+    MultiSigCredential(u64),
+    MultiSigSignatures(u64),
+    MultiSigSignerSet(u64),
+    MultiSigUserCredentials(Address),
+    MultiSigCredentialCount,
+    MultiSigRenewalHistory(u64),
+}
+
+/// Create a multi-signature credential in the registry
+pub fn create_multi_sig_credential(
+    env: &Env,
+    issuer: Address,
+    signers: Vec<Address>,
+    threshold: u32,
+    recipient: Address,
+    title: String,
+    description: String,
+    course_id: String,
+    ipfs_hash: String,
+    validity_duration: u64,
+) -> u64 {
+    issuer.require_auth();
+
+    let admin: Address = env
+        .storage()
+        .instance()
+        .get(&Symbol::new(env, "admin"))
+        .unwrap_or_else(|| panic!("Admin not found"));
+
+    if issuer != admin {
+        panic!("Unauthorized issuer");
+    }
+
+    let signer_count = signers.len() as u32;
+    if signer_count == 0 {
+        panic!("Signer list cannot be empty");
+    }
+    if threshold == 0 || threshold > signer_count {
+        panic!("Threshold must be between 1 and the number of signers");
+    }
+
+    let credential_id = StorageUtils::get_next_id(env, EntityType::Credential);
+    let current_time = env.ledger().timestamp();
+
+    let credential = MultiSigCredentialRegistry {
+        id: credential_id,
+        threshold,
+        signers: signers.clone(),
+        recipient: recipient.clone(),
+        title,
+        description,
+        course_id,
+        issued_at: current_time,
+        expires_at: current_time + validity_duration,
+        status: CredentialStatus::Pending,
+        ipfs_hash,
+        signature_count: 0,
+        renewal_count: 0,
+        last_renewed_at: None,
+    };
+
+    // Store credential in persistent storage
+    env.storage().persistent().set(
+        &MultiSigRegistryKey::MultiSigCredential(credential_id),
+        &credential,
+    );
+
+    // Initialize empty signatures
+    let empty_sigs: Vec<Address> = Vec::new(env);
+    env.storage().persistent().set(
+        &MultiSigRegistryKey::MultiSigSignatures(credential_id),
+        &empty_sigs,
+    );
+
+    // Store authorized signer set for quick lookup
+    env.storage().persistent().set(
+        &MultiSigRegistryKey::MultiSigSignerSet(credential_id),
+        &signers,
+    );
+
+    // Add to user's multi-sig credential list
+    let mut user_creds = env
+        .storage()
+        .persistent()
+        .get(&MultiSigRegistryKey::MultiSigUserCredentials(recipient.clone()))
+        .unwrap_or_else(|| Vec::new(env));
+    user_creds.push_back(credential_id);
+    env.storage().persistent().set(
+        &MultiSigRegistryKey::MultiSigUserCredentials(recipient),
+        &user_creds,
+    );
+
+    // Update credential count
+    env.storage()
+        .instance()
+        .set(&MultiSigRegistryKey::MultiSigCredentialCount, &credential_id);
+
+    // Emit event
+    env.events().publish(
+        (
+            Symbol::new(env, "multi_sig_registry"),
+            Symbol::new(env, "created"),
+        ),
+        (credential_id, threshold, signer_count),
+    );
+
+    credential_id
+}
+
+/// Add a signature to a multi-signature credential in the registry
+pub fn add_multi_sig_signature(
+    env: &Env,
+    credential_id: u64,
+    signer: Address,
+) -> CredentialStatus {
+    signer.require_auth();
+
+    let mut credential: MultiSigCredentialRegistry = env
+        .storage()
+        .persistent()
+        .get(&MultiSigRegistryKey::MultiSigCredential(credential_id))
+        .unwrap_or_else(|| panic!("Multi-sig credential not found"));
+
+    // Reject if already active or revoked
+    match credential.status {
+        CredentialStatus::Revoked => panic!("Credential is revoked"),
+        CredentialStatus::Expired => panic!("Credential is expired"),
+        CredentialStatus::Active => panic!("Credential is already active"),
+        CredentialStatus::Pending => {} // OK to sign
+    }
+
+    // Verify signer is in the authorized set
+    let signer_set: Vec<Address> = env
+        .storage()
+        .persistent()
+        .get(&MultiSigRegistryKey::MultiSigSignerSet(credential_id))
+        .unwrap_or_else(|| panic!("Signer set not found"));
+
+    if !signer_set.contains(&signer) {
+        panic!("Signer is not authorized for this credential");
+    }
+
+    // Load signatures and check for duplicates
+    let mut signatures: Vec<Address> = env
+        .storage()
+        .persistent()
+        .get(&MultiSigRegistryKey::MultiSigSignatures(credential_id))
+        .unwrap_or_else(|| Vec::new(env));
+
+    if signatures.contains(&signer) {
+        panic!("Signer has already signed this credential");
+    }
+
+    // Add signature
+    signatures.push_back(signer.clone());
+    env.storage().persistent().set(
+        &MultiSigRegistryKey::MultiSigSignatures(credential_id),
+        &signatures,
+    );
+
+    credential.signature_count = signatures.len() as u32;
+
+    // Emit signature event
+    env.events().publish(
+        (
+            Symbol::new(env, "multi_sig_registry"),
+            Symbol::new(env, "signed"),
+        ),
+        (credential_id, signer.clone()),
+    );
+
+    // Check threshold
+    if credential.signature_count >= credential.threshold {
+        credential.status = CredentialStatus::Active;
+        env.storage().persistent().set(
+            &MultiSigRegistryKey::MultiSigCredential(credential_id),
+            &credential,
+        );
+
+        // Emit activation event
+        env.events().publish(
+            (
+                Symbol::new(env, "multi_sig_registry"),
+                Symbol::new(env, "activated"),
+            ),
+            (credential_id,),
+        );
+
+        return CredentialStatus::Active;
+    }
+
+    // Store updated credential with new signature count
+    env.storage().persistent().set(
+        &MultiSigRegistryKey::MultiSigCredential(credential_id),
+        &credential,
+    );
+
+    CredentialStatus::Pending
+}
+
+/// Get a multi-sig credential from the registry
+pub fn get_multi_sig_credential(
+    env: &Env,
+    credential_id: u64,
+) -> MultiSigCredentialRegistry {
+    env.storage()
+        .persistent()
+        .get(&MultiSigRegistryKey::MultiSigCredential(credential_id))
+        .unwrap_or_else(|| panic!("Multi-sig credential not found"))
+}
+
+/// Get signatures for a multi-sig credential
+pub fn get_multi_sig_signatures(env: &Env, credential_id: u64) -> Vec<Address> {
+    env.storage()
+        .persistent()
+        .get(&MultiSigRegistryKey::MultiSigSignatures(credential_id))
+        .unwrap_or_else(|| Vec::new(env))
+}
+
+/// Get the authorized signer set for a multi-sig credential
+pub fn get_multi_sig_signer_set(env: &Env, credential_id: u64) -> Vec<Address> {
+    env.storage()
+        .persistent()
+        .get(&MultiSigRegistryKey::MultiSigSignerSet(credential_id))
+        .unwrap_or_else(|| Vec::new(env))
+}
+
+/// Check if credential threshold has been met
+pub fn is_multi_sig_active(env: &Env, credential_id: u64) -> bool {
+    let credential: MultiSigCredentialRegistry = env
+        .storage()
+        .persistent()
+        .get(&MultiSigRegistryKey::MultiSigCredential(credential_id))
+        .unwrap_or_else(|| panic!("Multi-sig credential not found"));
+
+    credential.status == CredentialStatus::Active
+}
+
+/// Get multi-sig credential count
+pub fn get_multi_sig_credential_count(env: &Env) -> u64 {
+    env.storage()
+        .instance()
+        .get(&MultiSigRegistryKey::MultiSigCredentialCount)
+        .unwrap_or(0)
+}
+
+/// Revoke a multi-sig credential
+pub fn revoke_multi_sig_credential(env: &Env, credential_id: u64, revoker: Address) -> bool {
+    revoker.require_auth();
+
+    let admin: Address = env
+        .storage()
+        .instance()
+        .get(&Symbol::new(env, "admin"))
+        .unwrap_or_else(|| panic!("Admin not found"));
+
+    if revoker != admin {
+        panic!("Only admin can revoke credentials");
+    }
+
+    let mut credential: MultiSigCredentialRegistry = env
+        .storage()
+        .persistent()
+        .get(&MultiSigRegistryKey::MultiSigCredential(credential_id))
+        .unwrap_or_else(|| panic!("Multi-sig credential not found"));
+
+    credential.status = CredentialStatus::Revoked;
+    env.storage().persistent().set(
+        &MultiSigRegistryKey::MultiSigCredential(credential_id),
+        &credential,
+    );
+
+    env.events().publish(
+        (
+            Symbol::new(env, "multi_sig_registry"),
+            Symbol::new(env, "revoked"),
+        ),
+        (credential_id, revoker),
+    );
+
+    true
+}
