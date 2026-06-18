@@ -340,16 +340,33 @@ class QuantumKeyManagementService {
 
     // Private helper methods
 
+    _getMasterKey() {
+        const hex = process.env.QUANTUM_MASTER_KEY;
+        if (hex) return Buffer.from(hex, 'hex').slice(0, 32);
+        // Stable deterministic fallback for development — MUST set QUANTUM_MASTER_KEY in production
+        console.warn('[SECURITY] QUANTUM_MASTER_KEY not set. Using deterministic dev fallback. Set this env var in production.');
+        return crypto.createHash('sha256').update('starked-education-quantum-dev-key').digest();
+    }
+
     async _encryptPrivateKey(privateKey) {
-        const masterKey = process.env.QUANTUM_MASTER_KEY || crypto.randomBytes(32).toString('hex');
-        const cipher = crypto.createCipher('aes-256-cbc', masterKey);
-        return Buffer.concat([cipher.update(privateKey, 'base64'), cipher.final()]).toString('base64');
+        const masterKey = this._getMasterKey();
+        const iv        = crypto.randomBytes(12);
+        const cipher    = crypto.createCipheriv('aes-256-gcm', masterKey, iv);
+        const encrypted = Buffer.concat([cipher.update(privateKey, 'utf8'), cipher.final()]);
+        const authTag   = cipher.getAuthTag();
+        // Layout: iv(12 bytes) | authTag(16 bytes) | ciphertext
+        return Buffer.concat([iv, authTag, encrypted]).toString('base64');
     }
 
     async _decryptPrivateKey(encryptedPrivateKey) {
-        const masterKey = process.env.QUANTUM_MASTER_KEY || crypto.randomBytes(32).toString('hex');
-        const decipher = crypto.createDecipher('aes-256-cbc', masterKey);
-        return Buffer.concat([decipher.update(encryptedPrivateKey, 'base64'), decipher.final()]).toString('base64');
+        const masterKey = this._getMasterKey();
+        const buf       = Buffer.from(encryptedPrivateKey, 'base64');
+        const iv        = buf.slice(0, 12);
+        const authTag   = buf.slice(12, 28);
+        const encrypted = buf.slice(28);
+        const decipher  = crypto.createDecipheriv('aes-256-gcm', masterKey, iv);
+        decipher.setAuthTag(authTag);
+        return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
     }
 
     async _storeKey(keyData) {
