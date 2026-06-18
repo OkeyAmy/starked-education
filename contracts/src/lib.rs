@@ -18,6 +18,11 @@ use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String};
 // pub mod utils;
 // pub mod proctoring;
 // pub mod tokenomics;
+// pub mod governance;
+// pub mod governance_test;
+pub mod governance;
+#[cfg(test)]
+pub mod governance_test;
 // pub mod marketplace;
 
 /// Core storage keys

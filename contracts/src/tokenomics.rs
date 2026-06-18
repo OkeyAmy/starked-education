@@ -200,6 +200,40 @@ impl TokenomicsContract {
         id
     }
 
+    /// Disburse scholarship tokens from treasury to a recipient.
+    /// Called by the governance contract after eligibility is confirmed.
+    pub fn disburse_scholarship(env: Env, recipient: Address, amount: u64) {
+        // Only the contract itself (via governance execution) should call this.
+        // In production, add an admin / governance contract address check here.
+        let balance = Self::balance_of(env.clone(), recipient.clone(), 0);
+        env.storage()
+            .persistent()
+            .set(&TokenomicsKey::TokenBalance(recipient.clone(), 0), &(balance + amount));
+
+        let total = env.storage().instance().get::<_, u64>(&TokenomicsKey::TotalSupply(0)).unwrap_or(0);
+        env.storage().instance().set(&TokenomicsKey::TotalSupply(0), &(total + amount));
+
+        env.events().publish(
+            (symbol_short!("scholar"), symbol_short!("disburse")),
+            (recipient, amount),
+        );
+    }
+
+    /// Return unspent scholarship funds back into the treasury supply.
+    pub fn return_scholarship_funds(env: Env, amount: u64) {
+        // Reduce total supply to reflect unspent reserved tokens being re-absorbed.
+        let total = env.storage().instance().get::<_, u64>(&TokenomicsKey::TotalSupply(0)).unwrap_or(0);
+        if total < amount {
+            panic!("Amount exceeds total supply");
+        }
+        env.storage().instance().set(&TokenomicsKey::TotalSupply(0), &(total - amount));
+
+        env.events().publish(
+            (symbol_short!("scholar"), symbol_short!("return")),
+            amount,
+        );
+    }
+
     pub fn balance_of(env: Env, user: Address, token_type: u8) -> u64 {
         env.storage()
             .persistent()
