@@ -1,8 +1,8 @@
 const EventEmitter = require('events');
-const Achievement = require('../models/Achievement');
-const PointTransaction = require('../models/PointTransaction');
-const LeaderboardEntry = require('../models/LeaderboardEntry');
-const Challenge = require('../models/Challenge');
+const Achievement = require('../../models/Achievement');
+const PointTransaction = require('../../models/PointTransaction');
+const LeaderboardEntry = require('../../models/LeaderboardEntry');
+const Challenge = require('../../models/Challenge');
 const logger = require('../../utils/logger');
 
 /**

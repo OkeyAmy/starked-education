@@ -1,4 +1,7 @@
 const { createServer } = require('http');
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
 const dotenv = require('dotenv');
 
 const { connectRedis } = require('./utils/redis');
@@ -64,7 +67,7 @@ const swarmLearningRoutes = require('./routes/swarmLearning');
 const smartWalletRoutes = resolveRoute(require('./routes/smartWallet'));
 
 // AGI Tutor routes
-const agiTutorRoutes = require('./routes/agiTutorRoutes');
+const agiTutorRoutes = resolveRoute(require('./routes/agiTutorRoutes'));
 
 // Analytics routes
 const analyticsRoutes = require('./routes/analytics');
@@ -132,24 +135,25 @@ v1Router.use('/autonomous-agents', autonomousAgentsRoutes);
 const gamificationRoutes = require('./routes/gamification');
 v1Router.use('/gamification', gamificationRoutes);
 
-// Bridge routes
-const bridgeRoutes = require('./routes/bridge');
+// Bridge routes — module not yet implemented, use empty router
+console.warn('Warning: Bridge routes module not found, using empty router');
+const bridgeRoutes = express.Router();
 v1Router.use('/bridge', bridgeRoutes);
 
 // Time-Locked Credential routes
-const timeLockCredentialsRoutes = require('./routes/timeLockCredentials');
+const timeLockCredentialsRoutes = resolveRoute(require('./routes/timeLockCredentials'));
 v1Router.use('/time-lock', timeLockCredentialsRoutes);
 
 // VRF (Verifiable Random Function) routes
-const vrfRoutes = require('./routes/vrf');
+const vrfRoutes = resolveRoute(require('./routes/vrf'));
 v1Router.use('/vrf', vrfRoutes);
 
 // Real-time Translation routes
-const translationRoutes = require('./routes/translation');
+const translationRoutes = resolveRoute(require('./routes/translation'));
 v1Router.use('/translate', translationRoutes);
 
 // Cross-Protocol Bridge routes
-const crossProtocolBridgeRoutes = require('./routes/crossProtocolBridge');
+const crossProtocolBridgeRoutes = resolveRoute(require('./routes/crossProtocolBridge'));
 v1Router.use('/cross-protocol-bridge', crossProtocolBridgeRoutes);
 
 // Admin dashboard routes

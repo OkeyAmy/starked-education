@@ -3,7 +3,7 @@ const router = express.Router();
 const GamificationEngine = require('../services/gamification/GamificationEngine');
 const Achievement = require('../models/Achievement');
 const Challenge = require('../models/Challenge');
-const logger = require('../../utils/logger');
+const logger = require('../utils/logger');
 
 // Initialize engine
 const gamificationEngine = new GamificationEngine();

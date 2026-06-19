@@ -423,51 +423,13 @@ declare global {
   }
 }
 
-// Assignment validation schemas
-export interface ValidationSchema {
-  body?: Joi.ObjectSchema;
-  query?: Joi.ObjectSchema;
-  params?: Joi.ObjectSchema;
-}
-
-export const validateRequestSchema = (schema: ValidationSchema) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const errors: string[] = [];
-
-    // Validate request body
-    if (schema.body) {
-      const { error } = schema.body.validate(req.body);
-      if (error) {
-        errors.push(`Body: ${error.details[0].message}`);
-      }
-    }
-
-    // Validate query parameters
-    if (schema.query) {
-      const { error } = schema.query.validate(req.query);
-      if (error) {
-        errors.push(`Query: ${error.details[0].message}`);
-      }
-    }
-
-    // Validate route parameters
-    if (schema.params) {
-      const { error } = schema.params.validate(req.params);
-      if (error) {
-        errors.push(`Params: ${error.details[0].message}`);
-      }
-    }
-
-    if (errors.length > 0) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: errors
-      });
-    }
-
-    next();
-  };
-};
+// Re-export validateRequestSchema and ValidationSchema from the lightweight
+// standalone module to avoid babel-jest CommonJS evaluation-order crashes
+// when route files (e.g. smartWallet.ts) call the factory at module-load time.
+import { validateRequestSchema } from './validateRequestSchema';
+import type { ValidationSchema } from './validateRequestSchema';
+export { validateRequestSchema };
+export type { ValidationSchema };
 
 // Assignment validation schemas
 export const createAssignmentSchema: ValidationSchema = {

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const AutonomousAgentController = require('../services/autonomousAgents/AutonomousAgentController');
-const logger = require('../../utils/logger');
+const logger = require('../utils/logger');
 
 // Initialize controller
 let agentController;

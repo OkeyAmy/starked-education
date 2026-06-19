@@ -7,7 +7,7 @@ import express from 'express';
 import Joi from 'joi';
 import * as smartWalletController from '../controllers/smartWalletController';
 import { authenticateToken } from '../middleware/auth';
-import { validateRequestSchema } from '../middleware/validation';
+import { validateRequestSchema } from '../middleware/validateRequestSchema';
 
 const router = express.Router();
 
