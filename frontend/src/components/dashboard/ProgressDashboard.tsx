@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 import { 
   BookOpen, 
   Clock, 
@@ -23,7 +24,6 @@ import {
   Download,
   Filter,
   Search,
-  Loader2,
   Play,
   Pause,
   CheckCircle,
@@ -170,12 +170,7 @@ export function ProgressDashboard({
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin mr-3" />
-        Loading dashboard...
-      </div>
-    );
+    return <DashboardSkeleton className={className} />;
   }
 
   return (

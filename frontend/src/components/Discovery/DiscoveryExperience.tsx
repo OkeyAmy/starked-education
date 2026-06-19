@@ -22,6 +22,7 @@ import {
 import React, { useEffect, useState } from 'react';
 
 import CourseCard from './CourseCard';
+import { CourseGridSkeleton } from './CourseCardSkeleton';
 import FilterPanel from './FilterPanel';
 import Recommendations from './Recommendations';
 import SearchBar from './SearchBar';
@@ -457,12 +458,7 @@ export const DiscoveryExperience: React.FC = () => {
 
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {isLoadingSearch
-                  ? Array.from({ length: 6 }).map((_, index) => (
-                      <div
-                        key={index}
-                        className="h-72 animate-pulse rounded-[24px] bg-slate-100"
-                      />
-                    ))
+                  ? <CourseGridSkeleton count={6} view={filters.view} />
                   : searchData?.results.map((course) => (
                       <CourseCard
                         key={course.id}

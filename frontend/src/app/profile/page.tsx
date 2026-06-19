@@ -7,6 +7,7 @@ import { AchievementDisplay } from '../../components/AchievementDisplay';
 import { CredentialList } from '../../components/CredentialList';
 import { ProfileStats } from '../../components/ProfileStats';
 import { ProfileHeader } from '../../components/Profile/ProfileHeader';
+import { ProfileSkeleton } from '../../components/Profile/ProfileSkeleton';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { 
   User, 
@@ -50,14 +51,7 @@ export default function ProfilePage() {
   };
 
   if (loading && !profile) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading profile...</p>
-        </div>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (error && !profile) {
