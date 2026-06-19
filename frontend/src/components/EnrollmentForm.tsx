@@ -81,10 +81,10 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       
       switch (step.id) {
         case 'personal-info':
-          isCompleted = step.validation?.({ personalInfo });
+          isCompleted = !!step.validation?.({ personalInfo });
           break;
         case 'wallet-connection':
-          isCompleted = step.validation?.({ wallet });
+          isCompleted = !!step.validation?.({ wallet });
           break;
         case 'payment':
           isCompleted = !!transactionHash;
@@ -224,7 +224,15 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   const CurrentStepComponent = steps[currentStep].component;
 
   return (
-    <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg">
+    <form
+      className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg"
+      aria-labelledby="enrollment-step-title"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleNext();
+      }}
+    >
       {/* Progress Steps */}
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
@@ -265,7 +273,7 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       {/* Step Content */}
       <div className="p-6">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <h2 id="enrollment-step-title" className="text-2xl font-bold text-gray-900 mb-2">
             {steps[currentStep].title}
           </h2>
           <p className="text-gray-600">{steps[currentStep].description}</p>
@@ -283,8 +291,13 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
         />
 
         {error && (
-          <div className="mt-4 flex items-center space-x-2 text-red-600 bg-red-50 p-3 rounded-lg">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <div
+            id="enrollment-error"
+            role="alert"
+            aria-live="assertive"
+            className="mt-4 flex items-center space-x-2 text-red-700 bg-red-50 p-3 rounded-lg border border-red-200"
+          >
+            <AlertCircle aria-hidden="true" className="w-4 h-4 flex-shrink-0" />
             <span className="text-sm">{error}</span>
           </div>
         )}
@@ -292,6 +305,7 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
         {/* Navigation Buttons */}
         <div className="mt-6 flex justify-between">
           <button
+            type="button"
             onClick={handlePrevious}
             disabled={currentStep === 0}
             className="flex items-center space-x-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -301,7 +315,7 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
           </button>
 
           <button
-            onClick={handleNext}
+            type="submit"
             disabled={isSubmitting}
             className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -324,7 +338,7 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </form>
   );
 };
 
@@ -338,11 +352,15 @@ const PersonalInfoStep: React.FC<any> = ({ personalInfo, onPersonalInfoChange })
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="enrollment-first-name" className="block text-sm font-medium text-gray-700 mb-1">
             First Name *
           </label>
           <input
             type="text"
+            id="enrollment-first-name"
+            name="firstName"
+            autoComplete="given-name"
+            required
             value={personalInfo.firstName}
             onChange={(e) => handleChange('firstName', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -350,11 +368,15 @@ const PersonalInfoStep: React.FC<any> = ({ personalInfo, onPersonalInfoChange })
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="enrollment-last-name" className="block text-sm font-medium text-gray-700 mb-1">
             Last Name *
           </label>
           <input
             type="text"
+            id="enrollment-last-name"
+            name="lastName"
+            autoComplete="family-name"
+            required
             value={personalInfo.lastName}
             onChange={(e) => handleChange('lastName', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -364,11 +386,15 @@ const PersonalInfoStep: React.FC<any> = ({ personalInfo, onPersonalInfoChange })
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="enrollment-email" className="block text-sm font-medium text-gray-700 mb-1">
           Email Address *
         </label>
         <input
           type="email"
+          id="enrollment-email"
+          name="email"
+          autoComplete="email"
+          required
           value={personalInfo.email}
           onChange={(e) => handleChange('email', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -377,11 +403,14 @@ const PersonalInfoStep: React.FC<any> = ({ personalInfo, onPersonalInfoChange })
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="enrollment-phone" className="block text-sm font-medium text-gray-700 mb-1">
           Phone Number (Optional)
         </label>
         <input
           type="tel"
+          id="enrollment-phone"
+          name="phone"
+          autoComplete="tel"
           value={personalInfo.phone}
           onChange={(e) => handleChange('phone', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

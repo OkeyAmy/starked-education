@@ -116,7 +116,7 @@ export default function HomePage() {
         />
       </Head>
 
-      <main className={styles.page}>
+      <main id="main-content" className={styles.page}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <span className={styles.eyebrow}>Frontend Feature Prototype</span>
@@ -194,6 +194,7 @@ export default function HomePage() {
                         : styles.profileCard
                     }
                     onClick={() => handleProfileChange(candidate.id)}
+                    aria-pressed={candidate.id === profile.id}
                   >
                     <strong>{candidate.name}</strong>
                     <span>{candidate.description}</span>
@@ -214,6 +215,7 @@ export default function HomePage() {
                         : styles.modeCard
                     }
                     onClick={() => setLearningMode(mode.id)}
+                    aria-pressed={mode.id === learningMode}
                   >
                     <strong>{mode.label}</strong>
                     <span>{mode.description}</span>
@@ -253,6 +255,7 @@ export default function HomePage() {
                         min={min}
                         max={max}
                         value={value}
+                        aria-valuetext={`${value}${suffix}`}
                         onChange={(event) => updateSignal(key, Number(event.target.value))}
                       />
                     </label>

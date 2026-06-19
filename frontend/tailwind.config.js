@@ -9,6 +9,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        accessible: {
+          blue: '#1d4ed8',
+          green: '#15803d',
+          red: '#b91c1c',
+          amber: '#92400e',
+          muted: '#4b5563',
+        },
         dark: {
           50: '#f8fafc',
           100: '#f1f5f9',

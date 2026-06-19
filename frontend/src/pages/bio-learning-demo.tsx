@@ -33,6 +33,9 @@ const DemoContent: React.FC = () => {
           </div>
           <button 
             onClick={() => setSimulationActive(!isSimulationActive)}
+            type="button"
+            aria-label={isSimulationActive ? 'Disconnect biometric simulation' : 'Connect biometric simulation'}
+            aria-pressed={isSimulationActive}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Settings className="w-5 h-5 text-gray-500" />
@@ -40,7 +43,7 @@ const DemoContent: React.FC = () => {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-8 py-10">
+      <main id="main-content" className="max-w-7xl mx-auto px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Left Column - Lesson Content */}

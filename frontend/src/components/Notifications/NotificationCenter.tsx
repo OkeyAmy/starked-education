@@ -3,6 +3,7 @@ import { Bell, BellRing, Filter, Check, CheckCheck, Trash2, Settings, X } from '
 import { useNotifications } from '../../hooks/useNotifications';
 import NotificationItem from './NotificationItem';
 import PreferencesPanel from './PreferencesPanel';
+import { useFocusTrap } from '../../hooks/useKeyboardNavigation';
 
 const NotificationCenter: React.FC = () => {
   const {
@@ -21,6 +22,9 @@ const NotificationCenter: React.FC = () => {
   } = useNotifications();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, {
+    onEscape: () => setIsOpen(false)
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -55,7 +59,9 @@ const NotificationCenter: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        aria-label="Notifications"
+        aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
       >
         {unreadCount > 0 ? (
           <BellRing size={20} className="text-blue-600" />
@@ -65,7 +71,7 @@ const NotificationCenter: React.FC = () => {
         
         {/* Unread count badge */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+          <span aria-hidden="true" className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -73,13 +79,21 @@ const NotificationCenter: React.FC = () => {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[600px] overflow-hidden">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="notifications-title"
+          tabIndex={-1}
+          className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[600px] overflow-hidden"
+        >
           {/* Header */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+              <h2 id="notifications-title" className="text-lg font-semibold text-gray-900">Notifications</h2>
               <button
                 onClick={() => setIsOpen(false)}
+                aria-label="Close notifications"
                 className="p-1 rounded-md hover:bg-gray-100 transition-colors"
               >
                 <X size={18} className="text-gray-500" />
@@ -101,6 +115,7 @@ const NotificationCenter: React.FC = () => {
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }
                     `}
+                    aria-pressed={selectedCategory === category.value}
                   >
                     {category.label}
                   </button>

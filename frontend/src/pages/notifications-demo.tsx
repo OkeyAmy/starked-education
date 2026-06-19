@@ -14,9 +14,9 @@ const NotificationsDemo: React.FC = () => {
               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-indigo-100 shadow-lg">
                 S
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">
+              <div className="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent" aria-label="StarkEd">
                 StarkEd
-              </h1>
+              </div>
             </div>
             
             <div className="flex items-center gap-6">
@@ -29,11 +29,11 @@ const NotificationsDemo: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
-          <h2 className="text-4xl font-extrabold text-gray-900 mb-6 bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-extrabold text-gray-900 mb-6">
             Wallet Integration & Notification Demo
-          </h2>
+          </h1>
           <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
             Welcome to the StarkEd frontend demo. Use the connect button in the 
             top right to link your Stellar wallet and try out the new 
@@ -48,8 +48,8 @@ const NotificationsDemo: React.FC = () => {
               <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
                 <span className="text-blue-600 font-bold text-3xl transition-colors">🔔</span>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Real-time</h3>
-              <p className="text-gray-500 leading-relaxed">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Real-time</h2>
+              <p className="text-gray-600 leading-relaxed">
                 Stay updated with instant push notifications for all activities
               </p>
             </div>
@@ -58,8 +58,8 @@ const NotificationsDemo: React.FC = () => {
               <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-green-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
                 <span className="text-green-600 font-bold text-3xl transition-colors">📂</span>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Categorized</h3>
-              <p className="text-gray-500 leading-relaxed">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Categorized</h2>
+              <p className="text-gray-600 leading-relaxed">
                 Smart filtering for courses, messages, and system alerts
               </p>
             </div>
@@ -68,8 +68,8 @@ const NotificationsDemo: React.FC = () => {
               <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-purple-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
                 <span className="text-purple-600 font-bold text-3xl transition-colors">⚙️</span>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Customized</h3>
-              <p className="text-gray-500 leading-relaxed">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Customized</h2>
+              <p className="text-gray-600 leading-relaxed">
                 Personalized settings to manage your notification flow
               </p>
             </div>
@@ -78,8 +78,8 @@ const NotificationsDemo: React.FC = () => {
               <div className="w-16 h-16 bg-yellow-50 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-yellow-600 group-hover:text-white group-hover:scale-110 transition-all duration-300">
                 <span className="text-yellow-600 font-bold text-3xl transition-colors">📱</span>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Responsive</h3>
-              <p className="text-gray-500 leading-relaxed">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Responsive</h2>
+              <p className="text-gray-600 leading-relaxed">
                 Optimized experience across desktop and mobile devices
               </p>
             </div>

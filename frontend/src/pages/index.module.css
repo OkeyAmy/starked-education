@@ -116,6 +116,16 @@
   transform: translateY(-1px);
 }
 
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.profileCard:focus-visible,
+.modeCard:focus-visible,
+.textLink:focus-visible,
+.slider:focus-visible {
+  outline: 3px solid #124f43;
+  outline-offset: 3px;
+}
+
 .textLink {
   display: inline-flex;
   align-items: center;

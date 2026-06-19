@@ -1,14 +1,14 @@
 :root {
-  --primary-accent: #00d4ff;
-  --secondary-accent: #ff00c8;
+  --primary-accent: #04738a;
+  --secondary-accent: #9b087a;
   --background-dark: #0a0a0c;
   --surface: #121216;
   --surface-border: #1e1e24;
   --text-main: #e0e0e0;
-  --text-dim: #909090;
-  --success: #00ff88;
-  --warning: #ffcc00;
-  --error: #ff4444;
+  --text-dim: #b3b3b3;
+  --success: #22c55e;
+  --warning: #facc15;
+  --error: #f87171;
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-blur: blur(12px);
   --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
