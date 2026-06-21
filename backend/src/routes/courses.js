@@ -5,6 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
+const { readLimiter, courseWriteLimiter } = require('../middleware/rateLimiter');
 
 // Import middleware (will be available after TypeScript compilation)
 // const { 
@@ -46,6 +47,7 @@ const router = express.Router();
  * }
  */
 router.post('/:contentId/versions', 
+  courseWriteLimiter,
   // validateContentIdParam,
   // validateContentVersionCreation,
   // checkVersionManagementPermission,
@@ -102,6 +104,7 @@ router.post('/:contentId/versions',
  * GET /api/courses/content_123/versions?page=1&limit=10&sortBy=version&sortOrder=desc
  */
 router.get('/:contentId/versions',
+  readLimiter,
   // validateContentIdParam,
   // validateVersionHistoryQuery,
   // validateDateRange,
@@ -176,6 +179,7 @@ router.get('/:contentId/versions',
  * GET /api/courses/content_123/versions/current
  */
 router.get('/:contentId/versions/current',
+  readLimiter,
   // validateContentIdParam,
   // handleValidationErrors,
   async (req, res) => {
@@ -227,6 +231,7 @@ router.get('/:contentId/versions/current',
  * GET /api/courses/content_123/versions/1
  */
 router.get('/:contentId/versions/:versionNumber',
+  readLimiter,
   // validateContentIdParam,
   // validateVersionNumberParam,
   // handleValidationErrors,
@@ -279,6 +284,7 @@ router.get('/:contentId/versions/:versionNumber',
  * POST /api/courses/versions/compare/ver_1/ver_2
  */
 router.post('/versions/compare/:version1Id/:version2Id',
+  courseWriteLimiter,
   // validateVersionComparison,
   // handleValidationErrors,
   async (req, res) => {
@@ -358,6 +364,7 @@ router.post('/versions/compare/:version1Id/:version2Id',
  * }
  */
 router.post('/:contentId/versions/restore',
+  courseWriteLimiter,
   // validateContentIdParam,
   // validateVersionRestore,
   // checkVersionRestorePermission,
@@ -419,6 +426,7 @@ router.post('/:contentId/versions/restore',
  * }
  */
 router.put('/:contentId/versions/settings',
+  courseWriteLimiter,
   // validateContentIdParam,
   // validateVersionControlSettings,
   // checkVersionManagementPermission,
@@ -468,6 +476,7 @@ router.put('/:contentId/versions/settings',
  * GET /api/courses/content_123/versions/export?format=json
  */
 router.get('/:contentId/versions/export',
+  readLimiter,
   // validateContentIdParam,
   // validateVersionExport,
   // handleValidationErrors,
@@ -530,6 +539,7 @@ router.get('/:contentId/versions/export',
  * GET /api/courses/content_123/versions/statistics
  */
 router.get('/:contentId/versions/statistics',
+  readLimiter,
   // validateContentIdParam,
   // handleValidationErrors,
   async (req, res) => {

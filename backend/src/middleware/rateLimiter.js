@@ -3,6 +3,32 @@ const redisConfig = require('../config/redis');
 const securityConfig = require('../config/security');
 const logger = require('../utils/logger');
 
+const ONE_MINUTE = 60 * 1000;
+
+const publicRateLimitTiers = {
+  strict: {
+    windowMs: ONE_MINUTE,
+    max: 5,
+    message: 'Too many authentication attempts, please try again after a minute',
+    keyPrefix: 'rl:public:strict:',
+    keyByUser: false,
+  },
+  moderate: {
+    windowMs: ONE_MINUTE,
+    max: 30,
+    message: 'Too many content write requests, please try again after a minute',
+    keyPrefix: 'rl:public:moderate:',
+    keyByUser: true,
+  },
+  liberal: {
+    windowMs: ONE_MINUTE,
+    max: 100,
+    message: 'Too many read requests, please try again after a minute',
+    keyPrefix: 'rl:public:liberal:',
+    keyByUser: false,
+  },
+};
+
 /**
  * Custom Simple Redis Store for express-rate-limit
  */
@@ -21,12 +47,11 @@ class RedisStore {
       multi.expire(fullKey, this.expiry);
       const results = await multi.exec();
       
-      const currentCount = results[0];
-      const ttl = results[1];
+      const currentCount = Array.isArray(results[0]) ? results[0][1] : results[0];
 
       return {
         totalHits: currentCount,
-        resetTime: new Date(Date.now() + (ttl * 1000 || this.expiry * 1000))
+        resetTime: new Date(Date.now() + (this.expiry * 1000))
       };
     } catch (error) {
       logger.error(`RedisStore error for key ${fullKey}:`, error);
@@ -63,6 +88,7 @@ const createRateLimiter = (options = {}) => {
     max = securityConfig.tiers.default.max,
     message = securityConfig.tiers.default.message,
     keyPrefix = 'rl:',
+    keyByUser = true,
   } = options;
 
   const securityService = require('../services/securityService');
@@ -75,7 +101,7 @@ const createRateLimiter = (options = {}) => {
       message,
     },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: true,
     store: new RedisStore({
       prefix: keyPrefix,
       expiry: Math.ceil(windowMs / 1000),
@@ -94,11 +120,10 @@ const createRateLimiter = (options = {}) => {
       res.status(options.statusCode).send(options.message);
     },
     keyGenerator: (req) => {
-      // Use user ID if authenticated, else fallback to IP
-      if (req.user && (req.user.id || req.user.sub)) {
-        return `${keyPrefix}${req.user.id || req.user.sub}`;
+      if (keyByUser && req.user && (req.user.id || req.user.sub || req.user.userId)) {
+        return `user:${req.user.id || req.user.sub || req.user.userId}`;
       }
-      return req.ip;
+      return `ip:${req.ip}`;
     },
     skip: (req) => {
       // Skip whitelisted IPs or in test environment (unless explicitly testing security)
@@ -141,9 +166,7 @@ const adminLimiter = createRateLimiter({
 
 // Endpoint-specific limiters
 const authLimiter = createRateLimiter({
-  windowMs: securityConfig.endpoints.auth.windowMs,
-  max: securityConfig.endpoints.auth.max,
-  message: securityConfig.endpoints.auth.message,
+  ...publicRateLimitTiers.strict,
   keyPrefix: 'rl:auth:',
 });
 
@@ -159,6 +182,32 @@ const ipfsLimiter = createRateLimiter({
   max: securityConfig.endpoints.ipfs.max,
   message: securityConfig.endpoints.ipfs.message,
   keyPrefix: 'rl:ipfs:',
+});
+
+const strictLimiter = createRateLimiter(publicRateLimitTiers.strict);
+
+const moderateLimiter = createRateLimiter(publicRateLimitTiers.moderate);
+
+const liberalLimiter = createRateLimiter(publicRateLimitTiers.liberal);
+
+const contentWriteLimiter = createRateLimiter({
+  ...publicRateLimitTiers.moderate,
+  keyPrefix: 'rl:content:write:',
+});
+
+const readLimiter = createRateLimiter({
+  ...publicRateLimitTiers.liberal,
+  keyPrefix: 'rl:public:read:',
+});
+
+const searchWriteLimiter = createRateLimiter({
+  ...publicRateLimitTiers.moderate,
+  keyPrefix: 'rl:search:write:',
+});
+
+const courseWriteLimiter = createRateLimiter({
+  ...publicRateLimitTiers.moderate,
+  keyPrefix: 'rl:courses:write:',
 });
 
 /**
@@ -189,5 +238,13 @@ module.exports = {
   authLimiter,
   transactionLimiter,
   ipfsLimiter,
+  strictLimiter,
+  moderateLimiter,
+  liberalLimiter,
+  contentWriteLimiter,
+  readLimiter,
+  searchWriteLimiter,
+  courseWriteLimiter,
+  publicRateLimitTiers,
   createRateLimiter
 };

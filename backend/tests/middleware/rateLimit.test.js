@@ -1,10 +1,35 @@
+const express = require('express');
 const request = require('supertest');
-const app = require('../../src/index');
 const redisConfig = require('../../src/config/redis');
+const {
+  authLimiter,
+  contentWriteLimiter,
+  readLimiter,
+  publicRateLimitTiers,
+} = require('../../src/middleware/rateLimiter');
 
-describe('Rate Limiting Middleware', () => {
+const clearRateLimitKeys = async () => {
+  const keys = await redisConfig.client.keys('rl:*');
+  if (keys.length > 0) {
+    await redisConfig.client.del(keys);
+  }
+};
+
+const createTestApp = (limiter, handler = (_req, res) => res.json({ success: true })) => {
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    if (req.headers['x-user-id']) {
+      req.user = { id: req.headers['x-user-id'], role: 'student' };
+    }
+    next();
+  });
+  app.all('/limited', limiter, handler);
+  return app;
+};
+
+describe('Public API rate limiting middleware', () => {
   beforeAll(async () => {
-    // Ensure Redis is connected
     if (!redisConfig.isConnected) {
       await redisConfig.initialize();
     }
@@ -15,55 +40,83 @@ describe('Rate Limiting Middleware', () => {
   });
 
   beforeEach(async () => {
-    // Clear all security-related keys before each test
-    const patterns = ['rl:*', 'ddos:*', 'blacklist:*'];
-    for (const pattern of patterns) {
-      const keys = await redisConfig.client.keys(pattern);
-      if (keys.length > 0) {
-        await redisConfig.client.del(keys);
-      }
+    await clearRateLimitKeys();
+  });
+
+  test('defines the maintainer-requested public tiers', () => {
+    expect(publicRateLimitTiers.strict).toMatchObject({
+      windowMs: 60 * 1000,
+      max: 5,
+      keyByUser: false,
+    });
+    expect(publicRateLimitTiers.moderate).toMatchObject({
+      windowMs: 60 * 1000,
+      max: 30,
+      keyByUser: true,
+    });
+    expect(publicRateLimitTiers.liberal).toMatchObject({
+      windowMs: 60 * 1000,
+      max: 100,
+      keyByUser: false,
+    });
+  });
+
+  test('enforces strict auth limits at 5 requests per minute per IP with X-RateLimit headers', async () => {
+    const app = createTestApp(authLimiter);
+
+    for (let i = 0; i < 5; i += 1) {
+      const response = await request(app).post('/limited').set('x-test-security', 'true');
+      expect(response.status).toBe(200);
+      expect(response.headers['x-ratelimit-limit']).toBe('5');
     }
+
+    const blocked = await request(app).post('/limited').set('x-test-security', 'true');
+
+    expect(blocked.status).toBe(429);
+    expect(blocked.body).toEqual({
+      success: false,
+      message: 'Too many authentication attempts, please try again after a minute',
+    });
+    expect(blocked.headers['x-ratelimit-limit']).toBe('5');
   });
 
-  test('should allow requests within global rate limit', async () => {
-    const res = await request(app).get('/api/health');
-    expect(res.status).toBe(200);
-  });
+  test('enforces moderate content write limits per authenticated user', async () => {
+    const app = createTestApp(contentWriteLimiter);
 
-  test('should block requests exceeding global rate limit', async () => {
-    // Default limit is 50 in config
-    for (let i = 0; i < 50; i++) {
-      const r = await request(app).get('/api/health').set('x-test-security', 'true');
-      if (r.status !== 200) {
-        console.log(`Request ${i} failed with ${r.status}: ${JSON.stringify(r.body)}`);
-      }
-    }
-    
-    const res = await request(app).get('/api/health').set('x-test-security', 'true');
-    expect(res.status).toBe(429);
-    expect(res.body.message).toContain('Too many requests');
-  });
-
-  test('should enforce auth endpoint specific limits', async () => {
-    // Auth limit is 5 in config
-    for (let i = 0; i < 5; i++) {
-       await request(app)
-        .post('/api/v1/auth/login')
+    for (let i = 0; i < 30; i += 1) {
+      const response = await request(app)
+        .post('/limited')
         .set('x-test-security', 'true')
-        .send({ username: 'test', password: 'password' });
+        .set('x-user-id', 'user-a');
+      expect(response.status).toBe(200);
     }
 
-    const res = await request(app)
-      .post('/api/v1/auth/login')
+    const blocked = await request(app)
+      .post('/limited')
       .set('x-test-security', 'true')
-      .send({ username: 'test', password: 'password' });
+      .set('x-user-id', 'user-a');
 
-    expect(res.status).toBe(429);
-    expect(res.body.message).toContain('Too many login attempts');
+    const otherUser = await request(app)
+      .post('/limited')
+      .set('x-test-security', 'true')
+      .set('x-user-id', 'user-b');
+
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers['x-ratelimit-limit']).toBe('30');
+    expect(otherUser.status).toBe(200);
   });
 
-  test('should skip rate limiting for whitelisted IPs', async () => {
-    // This is hard to test with supertest as it doesn't easily spoof remote address
-    // but we can verify the 'skip' logic if we can mock req.ip
+  test('enforces liberal read limits at 100 requests per minute per IP', async () => {
+    const app = createTestApp(readLimiter);
+
+    for (let i = 0; i < 100; i += 1) {
+      const response = await request(app).get('/limited').set('x-test-security', 'true');
+      expect(response.status).toBe(200);
+    }
+
+    const blocked = await request(app).get('/limited').set('x-test-security', 'true');
+
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers['x-ratelimit-limit']).toBe('100');
   });
 });

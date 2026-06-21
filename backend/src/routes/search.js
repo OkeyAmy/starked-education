@@ -1,10 +1,11 @@
 const express = require('express');
 const { discoveryService } = require('../services/discoveryService');
+const { readLimiter, searchWriteLimiter } = require('../middleware/rateLimiter');
 
 const createSearchRouter = (service = discoveryService) => {
     const router = express.Router();
 
-    router.get('/', (req, res) => {
+    router.get('/', readLimiter, (req, res) => {
         try {
             const result = service.search({
                 query: req.query.q || req.query.query || '',
@@ -19,7 +20,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/suggestions', (req, res) => {
+    router.get('/suggestions', readLimiter, (req, res) => {
         try {
             const sessionKey = service.getUserSessionKey(req.query.userId, req.query.sessionId);
             const suggestions = service.getSuggestions(req.query.q || req.query.query || '', sessionKey, Number(req.query.limit) || 6);
@@ -29,7 +30,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.post('/voice', (req, res) => {
+    router.post('/voice', searchWriteLimiter, (req, res) => {
         try {
             const normalizedQuery = service.normalizeVoiceQuery(req.body.transcript || req.body.query || '');
             const result = service.search({
@@ -45,7 +46,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/recommendations', (req, res) => {
+    router.get('/recommendations', readLimiter, (req, res) => {
         try {
             const data = service.getRecommendations(req.query.userId, req.query.sessionId, Number(req.query.limit) || 6);
             res.json({ success: true, data });
@@ -54,7 +55,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/trending', (req, res) => {
+    router.get('/trending', readLimiter, (req, res) => {
         try {
             res.json({ success: true, data: service.getTrending(Number(req.query.limit) || 6) });
         } catch (error) {
@@ -62,7 +63,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/similar/:courseId', (req, res) => {
+    router.get('/similar/:courseId', readLimiter, (req, res) => {
         try {
             const data = service.getSimilar(req.params.courseId, Number(req.query.limit) || 4);
 
@@ -76,7 +77,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/learning-paths', (req, res) => {
+    router.get('/learning-paths', readLimiter, (req, res) => {
         try {
             const data = service.getLearningPaths(req.query.q || req.query.query || '', req.query.userId, req.query.sessionId, Number(req.query.limit) || 4);
             res.json({ success: true, data });
@@ -85,7 +86,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/curators', (req, res) => {
+    router.get('/curators', readLimiter, (req, res) => {
         try {
             res.json({ success: true, data: service.getCuratorRecommendations(Number(req.query.limit) || 3) });
         } catch (error) {
@@ -93,7 +94,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/history', (req, res) => {
+    router.get('/history', readLimiter, (req, res) => {
         try {
             const items = service.getSearchHistory(req.query.userId, req.query.sessionId);
             res.json({ success: true, data: { items } });
@@ -102,7 +103,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/saved-searches', (req, res) => {
+    router.get('/saved-searches', readLimiter, (req, res) => {
         try {
             const items = service.getSavedSearches(req.query.userId, req.query.sessionId);
             res.json({ success: true, data: { items } });
@@ -111,7 +112,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.post('/saved-searches', (req, res) => {
+    router.post('/saved-searches', searchWriteLimiter, (req, res) => {
         try {
             const item = service.saveSearch(req.body.userId, req.body.sessionId, req.body);
             res.status(201).json({ success: true, data: item });
@@ -120,7 +121,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/alerts', (req, res) => {
+    router.get('/alerts', readLimiter, (req, res) => {
         try {
             const items = service.getAlerts(req.query.userId, req.query.sessionId);
             res.json({ success: true, data: { items } });
@@ -129,7 +130,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.post('/alerts', (req, res) => {
+    router.post('/alerts', searchWriteLimiter, (req, res) => {
         try {
             const item = service.createAlert(req.body.userId, req.body.sessionId, req.body);
             res.status(201).json({ success: true, data: item });
@@ -138,7 +139,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.post('/click', (req, res) => {
+    router.post('/click', searchWriteLimiter, (req, res) => {
         try {
             const data = service.recordClick(req.body.userId, req.body.sessionId, req.body);
             res.status(201).json({ success: true, data });
@@ -147,7 +148,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.get('/analytics', (req, res) => {
+    router.get('/analytics', readLimiter, (req, res) => {
         try {
             res.json({ success: true, data: service.getAnalytics() });
         } catch (error) {

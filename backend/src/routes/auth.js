@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { authenticateToken, requireAdmin, requirePermission } = require('../middleware/auth');
 const { UserRole, PERMISSIONS } = require('../utils/roles');
-const { authLimiter } = require('../middleware/rateLimiter');
+const { authLimiter, readLimiter, moderateLimiter } = require('../middleware/rateLimiter');
 const securityService = require('../services/securityService');
 const router = express.Router();
 
@@ -169,7 +169,7 @@ router.post('/login', authLimiter, async (req, res) => {
  * Get current user profile
  * GET /api/auth/profile
  */
-router.get('/profile', authenticateToken, (req, res) => {
+router.get('/profile', readLimiter, authenticateToken, (req, res) => {
   const user = users.get(req.user.id);
   
   if (!user) {
@@ -195,7 +195,7 @@ router.get('/profile', authenticateToken, (req, res) => {
  * Update user profile
  * PUT /api/auth/profile
  */
-router.put('/profile', authenticateToken, async (req, res) => {
+router.put('/profile', moderateLimiter, authenticateToken, async (req, res) => {
   try {
     const { username, email, currentPassword, newPassword } = req.body;
     const user = users.get(req.user.id);
@@ -286,6 +286,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
  * PUT /api/auth/assign-role/:userId
  */
 router.put('/assign-role/:userId', 
+  moderateLimiter,
   authenticateToken, 
   requireAdmin, 
   requirePermission(PERMISSIONS.USER_ASSIGN_ROLE),
@@ -341,6 +342,7 @@ router.put('/assign-role/:userId',
  * GET /api/auth/users
  */
 router.get('/users', 
+  readLimiter,
   authenticateToken, 
   requireAdmin, 
   requirePermission(PERMISSIONS.USER_READ),
@@ -393,6 +395,7 @@ router.get('/users',
  * DELETE /api/auth/users/:userId
  */
 router.delete('/users/:userId', 
+  moderateLimiter,
   authenticateToken, 
   requireAdmin, 
   requirePermission(PERMISSIONS.USER_DELETE),
