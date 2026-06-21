@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react'
 import SkillRadar from './SkillRadar'
 import StreakTracker from './StreakTracker'
 import GoalSetter from './GoalSetter'
+import { ProgressDashboardSkeleton } from './AnalyticsSkeleton'
 // This component provides a comprehensive dashboard for users to track their learning progress, skill proficiency, and streaks. It fetches data from the backend and visualizes it in an engaging way.
 type ProgressData = {
   overallCompletion: number
@@ -39,7 +40,7 @@ const ProgressDashboard: React.FC = () => {
     return () => { mounted = false }
   }, [])
 
-  if (loading) return <div className="p-6">Loading analytics...</div>
+  if (loading) return <ProgressDashboardSkeleton />
 
   if (!data) return <div className="p-6">Unable to load analytics.</div>
 
