@@ -230,18 +230,18 @@ export function ProgressDashboard({
 
       {/* Main Content */}
       <Tabs defaultValue="enrollments" className="space-y-6">
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="enrollments">My Enrollments</TabsTrigger>
-            <TabsTrigger value="progress">Progress Analytics</TabsTrigger>
-            <TabsTrigger value="activity">Learning Activity</TabsTrigger>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <TabsList className="flex flex-wrap h-auto p-1 bg-muted">
+            <TabsTrigger value="enrollments" className="min-h-[40px] px-3 py-1.5 text-xs sm:text-sm">My Enrollments</TabsTrigger>
+            <TabsTrigger value="progress" className="min-h-[40px] px-3 py-1.5 text-xs sm:text-sm">Progress Analytics</TabsTrigger>
+            <TabsTrigger value="activity" className="min-h-[40px] px-3 py-1.5 text-xs sm:text-sm">Learning Activity</TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <select
               value={selectedTimeRange}
               onChange={(e) => setSelectedTimeRange(e.target.value as any)}
-              className="px-3 py-1 border rounded-md text-sm"
+              className="w-full sm:w-auto px-3 py-2 border rounded-md text-sm bg-background min-h-[44px]"
             >
               <option value="week">Last Week</option>
               <option value="month">Last Month</option>
@@ -262,14 +262,14 @@ export function ProgressDashboard({
                 placeholder="Search courses..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-md"
+                className="w-full pl-10 pr-4 py-2 border rounded-md min-h-[44px]"
               />
             </div>
             
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border rounded-md"
+              className="px-4 py-2 border rounded-md min-h-[44px] bg-background"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -283,29 +283,29 @@ export function ProgressDashboard({
           <div className="grid gap-4">
             {filteredEnrollments.map((enrollment) => (
               <Card key={enrollment.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex gap-4">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row gap-4">
                     <img
                       src={enrollment.course.thumbnail}
                       alt={enrollment.course.title}
-                      className="w-20 h-20 object-cover rounded-lg"
+                      className="w-full sm:w-20 h-32 sm:h-20 object-cover rounded-lg"
                     />
                     
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-start justify-between">
+                    <div className="flex-1 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                         <div>
-                          <h3 className="font-semibold text-lg">{enrollment.course.title}</h3>
-                          <p className="text-sm text-muted-foreground">
+                          <h3 className="font-semibold text-base sm:text-lg leading-tight">{enrollment.course.title}</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                             Instructor: {enrollment.course.instructor.name}
                           </p>
                         </div>
-                        <Badge className={getStatusColor(enrollment.status)}>
+                        <Badge className={`w-fit text-xs px-2 py-0.5 ${getStatusColor(enrollment.status)}`}>
                           {enrollment.status.charAt(0).toUpperCase() + enrollment.status.slice(1)}
                         </Badge>
                       </div>
 
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center justify-between text-xs sm:text-sm">
                           <span>Progress</span>
                           <span className="font-medium">{enrollment.progress}%</span>
                         </div>
@@ -317,40 +317,40 @@ export function ProgressDashboard({
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs sm:text-sm pt-1">
                         <div>
-                          <span className="text-muted-foreground">Lessons:</span>
+                          <span className="text-muted-foreground block">Lessons:</span>
                           <p className="font-medium">
                             {enrollment.completedLessons}/{enrollment.totalLessons}
                           </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Time:</span>
+                          <span className="text-muted-foreground block">Time:</span>
                           <p className="font-medium">{formatHours(enrollment.timeSpent)}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Level:</span>
+                          <span className="text-muted-foreground block">Level:</span>
                           <p className="font-medium capitalize">{enrollment.course.metadata.level}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Duration:</span>
+                          <span className="text-muted-foreground block">Duration:</span>
                           <p className="font-medium">{enrollment.course.metadata.duration}h</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-muted-foreground">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/40">
+                        <div className="text-xs text-muted-foreground">
                           Last accessed: {formatDate(enrollment.lastAccessed)}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 w-full sm:w-auto">
                           {enrollment.status === 'active' && (
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" className="flex-1 sm:flex-initial min-h-[44px]">
                               <Play className="w-4 h-4 mr-1" />
                               Continue
                             </Button>
                           )}
                           {enrollment.certificateIssued && (
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" className="flex-1 sm:flex-initial min-h-[44px]">
                               <Download className="w-4 h-4 mr-1" />
                               Certificate
                             </Button>
@@ -483,14 +483,14 @@ export function ProgressDashboard({
             <CardContent>
               <div className="space-y-4">
                 {activities.map((activity, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-lg">
                     <div>
                       <p className="font-medium">{formatDate(activity.date)}</p>
                       <p className="text-sm text-muted-foreground">
                         {activity.lessonsCompleted} lessons completed • {formatHours(activity.hoursSpent)} spent
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <p className="text-sm text-muted-foreground">Courses</p>
                       <p className="font-medium">{activity.coursesAccessed.length}</p>
                     </div>

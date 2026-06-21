@@ -28,11 +28,11 @@ const ControlBar: React.FC<ControlBarProps> = ({
 }) => {
   return (
     <div className="bg-gray-800 border-t border-gray-700 p-4">
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-2 sm:gap-4">
         {/* Mute/Unmute */}
         <button
           onClick={onToggleMute}
-          className={`p-4 rounded-full transition-all ${
+          className={`p-3 sm:p-4 rounded-full transition-all ${
             isMuted
               ? 'bg-red-600 hover:bg-red-700'
               : 'bg-gray-700 hover:bg-gray-600'
@@ -49,7 +49,7 @@ const ControlBar: React.FC<ControlBarProps> = ({
         {/* Video On/Off */}
         <button
           onClick={onToggleVideo}
-          className={`p-4 rounded-full transition-all ${
+          className={`p-3 sm:p-4 rounded-full transition-all ${
             !isVideoOn
               ? 'bg-red-600 hover:bg-red-700'
               : 'bg-gray-700 hover:bg-gray-600'
@@ -66,7 +66,7 @@ const ControlBar: React.FC<ControlBarProps> = ({
         {/* Screen Share */}
         <button
           onClick={onToggleScreenShare}
-          className={`p-4 rounded-full transition-all ${
+          className={`p-3 sm:p-4 rounded-full transition-all ${
             isScreenSharing
               ? 'bg-blue-600 hover:bg-blue-700'
               : 'bg-gray-700 hover:bg-gray-600'
@@ -83,7 +83,7 @@ const ControlBar: React.FC<ControlBarProps> = ({
         {/* Whiteboard */}
         <button
           onClick={onToggleWhiteboard}
-          className={`p-4 rounded-full transition-all ${
+          className={`p-3 sm:p-4 rounded-full transition-all ${
             showWhiteboard
               ? 'bg-blue-600 hover:bg-blue-700'
               : 'bg-gray-700 hover:bg-gray-600'
@@ -93,12 +93,12 @@ const ControlBar: React.FC<ControlBarProps> = ({
           <Pencil className="w-6 h-6" />
         </button>
 
-        <div className="w-px h-12 bg-gray-700 mx-2" />
+        <div className="w-px h-12 bg-gray-700 mx-1 sm:mx-2" />
 
         {/* Leave Room */}
         <button
           onClick={onLeaveRoom}
-          className="p-4 rounded-full bg-red-600 hover:bg-red-700 transition-all"
+          className="p-3 sm:p-4 rounded-full bg-red-600 hover:bg-red-700 transition-all"
           title="Leave room"
         >
           <PhoneOff className="w-6 h-6" />

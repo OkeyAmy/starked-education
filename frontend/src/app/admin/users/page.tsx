@@ -153,33 +153,33 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 sm:px-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
-          <p className="text-gray-600">Manage platform users and their permissions</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">User Management</h1>
+          <p className="text-sm text-gray-600 mt-0.5">Manage platform users and their permissions</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {hasPermission('user:create') && (
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]">
               <Plus className="w-4 h-4" />
-              Add User
+              <span>Add User</span>
             </button>
           )}
           <button 
             onClick={handleExportUsers}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors min-h-[44px]"
           >
             <Download className="w-4 h-4" />
-            Export
+            <span>Export</span>
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border border-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -187,14 +187,14 @@ export default function UserManagement() {
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-h-[44px]"
             />
           </div>
           
           <select
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-h-[44px] bg-white"
           >
             <option value="all">All Roles</option>
             <option value="student">Student</option>
@@ -206,7 +206,7 @@ export default function UserManagement() {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-h-[44px] bg-white"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -214,16 +214,17 @@ export default function UserManagement() {
             <option value="suspended">Suspended</option>
           </select>
 
-          <button className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium min-h-[44px]">
             <Filter className="w-4 h-4" />
-            More Filters
+            <span>More Filters</span>
           </button>
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Users Content Container */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+        {/* Table view (Desktop: >= md breakpoint) */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -286,19 +287,19 @@ export default function UserManagement() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       {hasPermission('user:update') && (
-                        <button className="text-blue-600 hover:text-blue-900">
+                        <button className="text-blue-600 hover:text-blue-900 p-1">
                           <Edit className="w-4 h-4" />
                         </button>
                       )}
                       {hasPermission('user:delete') && (
                         <button 
                           onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-600 hover:text-red-900 p-1"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
-                      <button className="text-gray-600 hover:text-gray-900">
+                      <button className="text-gray-600 hover:text-gray-900 p-1">
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </div>
@@ -309,10 +310,90 @@ export default function UserManagement() {
           </table>
         </div>
 
+        {/* Card list view (Mobile/Tablet: < md breakpoint) */}
+        <div className="grid grid-cols-1 gap-4 p-4 md:hidden bg-gray-50/50">
+          {users.map((user) => (
+            <div key={user.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{user.name}</h3>
+                  <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                    <Mail className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate max-w-[170px] sm:max-w-xs">{user.email}</span>
+                  </div>
+                </div>
+                <span className={`px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-full uppercase ${getStatusColor(user.status)}`}>
+                  {user.status}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className={`px-2 py-0.5 font-semibold rounded-full ${getRoleColor(user.role)}`}>
+                  {user.role}
+                </span>
+                <span className="text-gray-400">•</span>
+                <span className="text-gray-600">
+                  {user.coursesCompleted}/{user.coursesEnrolled} courses
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-gray-100 py-2.5 my-1">
+                <div>
+                  <span className="text-gray-400">Average Score</span>
+                  <p className="font-semibold text-gray-900 mt-0.5">{user.averageScore}%</p>
+                </div>
+                <div>
+                  <span className="text-gray-400">Last Login</span>
+                  <p className="font-semibold text-gray-900 flex items-center gap-1 mt-0.5">
+                    <Calendar className="w-3 h-3 text-gray-400" />
+                    {new Date(user.lastLogin).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Mobile Actions */}
+              <div className="flex items-center gap-2 pt-1">
+                {hasPermission('user:update') && (
+                  <button
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs border border-gray-200 rounded-lg hover:bg-slate-50 text-blue-600 font-semibold min-h-[44px]"
+                    aria-label="Edit user"
+                  >
+                    <Edit className="w-4 h-4" />
+                    <span>Edit</span>
+                  </button>
+                )}
+                {hasPermission('user:delete') && (
+                  <button
+                    onClick={() => handleDeleteUser(user.id)}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs border border-gray-200 rounded-lg hover:bg-red-50 text-red-600 font-semibold min-h-[44px]"
+                    aria-label="Delete user"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete</span>
+                  </button>
+                )}
+                <button
+                  className="p-2.5 border border-gray-200 rounded-lg hover:bg-slate-50 text-gray-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label="More options"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {users.length === 0 && (
+            <div className="text-center py-8 bg-white border border-gray-200 rounded-xl text-gray-500">
+              <Users className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+              <p className="text-sm font-medium">No users found</p>
+            </div>
+          )}
+        </div>
+
         {/* Pagination */}
-        <div className="px-6 py-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
+        <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50/50">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
               Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
               {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
               {pagination.total} results
@@ -321,17 +402,19 @@ export default function UserManagement() {
               <button
                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                 disabled={pagination.page === 1}
-                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Previous page"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-3 py-1 text-sm text-gray-700">
+              <span className="px-3 py-1 text-xs sm:text-sm text-gray-700 font-medium">
                 Page {pagination.page} of {pagination.pages}
               </span>
               <button
                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                 disabled={pagination.page === pagination.pages}
-                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Next page"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

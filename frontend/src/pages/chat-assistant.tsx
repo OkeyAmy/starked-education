@@ -4,6 +4,28 @@ import { useCourseStore } from '@/store/courseStore';
 import { RouteErrorBoundary } from '../components/RouteErrorBoundary';
 
 const ChatAssistantPage: React.FC = () => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <RouteErrorBoundary routeName="Chat Assistant">
+      <ChatAssistantContent />
+    </RouteErrorBoundary>
+  );
+};
+
+const ChatAssistantContent: React.FC = () => {
   const { currentCourse, loadAvailableCourses, setCurrentCourse } = useCourseStore();
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -25,7 +47,6 @@ const ChatAssistantPage: React.FC = () => {
   const { availableCourses } = useCourseStore();
 
   return (
-    <RouteErrorBoundary routeName="Chat Assistant">
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
@@ -163,7 +184,6 @@ const ChatAssistantPage: React.FC = () => {
         </div>
       </div>
     </div>
-    </RouteErrorBoundary>
   );
 };
 

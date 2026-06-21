@@ -17,7 +17,11 @@ import {
   Search,
   Bell,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FlaskConical,
+  Globe,
+  Brain,
+  Users
 } from 'lucide-react';
 
 interface MobileNavProps {
@@ -80,6 +84,30 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       label: 'Certificates',
       icon: <Award className="w-5 h-5" />,
       path: '/certificates'
+    },
+    {
+      id: 'lab',
+      label: 'Virtual Lab',
+      icon: <FlaskConical className="w-5 h-5" />,
+      path: '/lab'
+    },
+    {
+      id: 'campus',
+      label: 'Metaverse',
+      icon: <Globe className="w-5 h-5" />,
+      path: '/campus'
+    },
+    {
+      id: 'bci',
+      label: 'BCI Control',
+      icon: <Brain className="w-5 h-5" />,
+      path: '/bci-dashboard'
+    },
+    {
+      id: 'collaboration',
+      label: 'Collab Room',
+      icon: <Users className="w-5 h-5" />,
+      path: '/collaboration'
     }
   ];
 
@@ -385,7 +413,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       {/* Bottom Navigation for Mobile */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden">
         <nav className="flex items-center justify-around py-2">
-          {mainNavItems.map((item) => (
+          {mainNavItems.slice(0, 4).map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavItemClick(item)}

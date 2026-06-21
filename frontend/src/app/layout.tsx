@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import PerformanceInitializer from './PerformanceInitializer';
+import MobileNavShell from '@/components/Mobile/MobileNavShell';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
     <html lang={locale} dir={dir}>
       <body className={inter.className}>
         <PerformanceInitializer />
+        <MobileNavShell />
         {children}
       </body>
     </html>
