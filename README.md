@@ -309,9 +309,19 @@ For detailed documentation, see [HOLOGRAPHIC_STORAGE_README.md](./backend/HOLOGR
 - **Reduce Administrative Overhead** - Automate certificate management
 - **Global Credential Recognition** - Cross-border verification
 
+## 📚 Documentation
+
+- [Contributing Guide](CONTRIBUTING.md) — how to contribute, coding standards, PR process
+- [Architecture Overview](docs/ARCHITECTURE.md) — system design and components
+- [Development Setup](docs/DEVELOPMENT.md) — local setup for all three packages
+- [Testing Guide](docs/TESTING.md) — unit, integration, and E2E conventions
+- [Pull Request Template](.github/PULL_REQUEST_TEMPLATE.md) — checklist for PRs
+
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details,
+along with the [Development Setup](docs/DEVELOPMENT.md), [Architecture Overview](docs/ARCHITECTURE.md),
+and [Testing Guide](docs/TESTING.md).
 
 ### 🐛 Found a Bug?
 - [Create an issue](https://github.com/jobbykings/starked-education/issues/new?assignees=&labels=bug&template=bug_report.md)
