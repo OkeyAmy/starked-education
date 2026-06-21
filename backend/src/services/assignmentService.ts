@@ -49,6 +49,14 @@ export class AssignmentService {
   private grades: Map<string, Grade> = new Map();
 
   async createAssignment(assignmentData: Partial<Assignment>): Promise<Assignment> {
+    // Validate required fields
+    if (!assignmentData.title || assignmentData.title.trim() === '') {
+      throw new Error('Title is required');
+    }
+    if (!assignmentData.maxPoints || assignmentData.maxPoints <= 0) {
+      throw new Error('maxPoints must be positive');
+    }
+
     const assignment: Assignment = {
       id: uuidv4(),
       courseId: assignmentData.courseId!,

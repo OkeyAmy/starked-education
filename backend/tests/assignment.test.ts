@@ -348,22 +348,25 @@ describe('Assignment Grading Service', () => {
         submissionId: 'sub1',
         gradedBy: 'instructor-123',
         totalPoints: 100,
-        earnedPoints: 95
-      });
+        earnedPoints: 95,
+        assignmentId: 'assignment-123'
+      } as any);
 
       await gradingService.gradeSubmission({
         submissionId: 'sub2',
         gradedBy: 'instructor-123',
         totalPoints: 100,
-        earnedPoints: 85
-      });
+        earnedPoints: 85,
+        assignmentId: 'assignment-123'
+      } as any);
 
       await gradingService.gradeSubmission({
         submissionId: 'sub3',
         gradedBy: 'instructor-123',
         totalPoints: 100,
-        earnedPoints: 75
-      });
+        earnedPoints: 75,
+        assignmentId: 'assignment-123'
+      } as any);
     });
 
     it('should calculate class statistics', async () => {
@@ -510,13 +513,17 @@ describe('Plagiarism Service', () => {
     it('should extract text from submission', async () => {
       const submission = {
         id: 'test-submission',
+        assignmentId: 'assignment-123',
+        studentId: 'student-123',
+        attemptNumber: 1,
+        status: 'submitted',
         textContent: 'This is the text content of the submission.',
         codeSubmission: {
           language: 'javascript',
           code: 'console.log("Hello World");'
         },
         files: []
-      };
+      } as any;
 
       const extractedText = await plagiarismService.extractTextFromSubmission(submission);
 

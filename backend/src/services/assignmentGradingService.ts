@@ -50,8 +50,8 @@ export class AssignmentGradingService {
     const grade: Grade = {
       id: uuidv4(),
       submissionId: gradingData.submissionId,
-      assignmentId: '', // Will be filled from submission
-      studentId: '', // Will be filled from submission
+      assignmentId: (gradingData as any).assignmentId || '',
+      studentId: (gradingData as any).studentId || '',
       gradedBy: gradingData.gradedBy,
       status: GradingStatus.GRADED,
       totalPoints: gradingData.totalPoints,

@@ -294,15 +294,19 @@ export class CodeExecutionService {
   private executeJavaScript(code: string, input?: string): string {
     try {
       // Create a safe execution context
-      const sandbox = {
+      const sandbox: Record<string, any> = {
         console: {
           log: (...args: any[]) => args.join(" "),
         },
-        // Add safe built-in functions as needed
       };
 
       // Execute code in sandbox (simplified - in production, use vm2 or similar)
-      const func = new Function(...Object.keys(sandbox), code);
+      // Wrap input into a return expression if provided and code defines a function
+      let wrappedCode = code;
+      if (input && input.trim()) {
+        wrappedCode = `${code}\n;return (${input});`;
+      }
+      const func = new Function(...Object.keys(sandbox), wrappedCode);
       const result = func(...Object.values(sandbox));
 
       return result !== undefined
