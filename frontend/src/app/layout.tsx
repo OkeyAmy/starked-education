@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { performanceMonitor } from '@/lib/performance-monitor';
+import PerformanceInitializer from './PerformanceInitializer';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -20,16 +20,15 @@ export default function RootLayout({
   children: React.ReactNode;
   params?: { locale?: string };
 }) {
-  if (typeof window !== 'undefined') {
-    performanceMonitor;
-  }
-
   const locale = params?.locale ?? 'en';
   const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
 
   return (
     <html lang={locale} dir={dir}>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <PerformanceInitializer />
+        {children}
+      </body>
     </html>
   );
 }

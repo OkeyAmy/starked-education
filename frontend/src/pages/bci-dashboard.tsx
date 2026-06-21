@@ -1,5 +1,5 @@
 import React from 'react';
-import { BCIDashboard } from '../components/BCI/BCIDashboard';
+import { BCIDashboard } from '../components/BCI';
 
 const BCIDashboardPage: React.FC = () => {
   return (
