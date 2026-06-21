@@ -22,6 +22,8 @@
     "test:federated": "jest --testPathPattern=federatedLearning",
     "test:all": "npm run test:ci && npm run test:api && npm run test:federated",
     "typecheck": "tsc --noEmit",
+    "db:backup": "bash scripts/backup.sh",
+    "db:restore": "bash scripts/restore.sh",
     "python:install": "pip install -r requirements.txt",
     "python:setup": "python -m spacy download en_core_web_sm"
   },
