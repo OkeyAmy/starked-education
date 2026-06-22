@@ -5,6 +5,7 @@ import { HandsFreeNavigation } from './HandsFreeNavigation';
 import { AttentionTracker } from './AttentionTracker';
 import { AdaptiveDifficulty } from './AdaptiveDifficulty';
 import { NeurofeedbackTraining } from './NeurofeedbackTraining';
+import { RouteErrorBoundary } from '../RouteErrorBoundary';
 
 type TabType = 'dashboard' | 'navigation' | 'attention' | 'difficulty' | 'training';
 
@@ -168,7 +169,9 @@ export const BCIDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              {renderActiveTab()}
+              <RouteErrorBoundary routeName={tabs.find(tab => tab.id === activeTab)?.name || 'BCI Tab'}>
+                {renderActiveTab()}
+              </RouteErrorBoundary>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { VirtualScienceLab } from '../../components/Lab';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'Virtual Science Laboratory — StarkEd',
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function LabPage() {
-  return <VirtualScienceLab />;
+  return (
+    <ErrorBoundary>
+      <VirtualScienceLab />
+    </ErrorBoundary>
+  );
 }

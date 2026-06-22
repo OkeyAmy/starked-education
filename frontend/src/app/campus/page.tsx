@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { MetaverseCampus } from '../../components/Metaverse';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'Metaverse Campus — StarkEd',
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function CampusPage() {
-  return <MetaverseCampus />;
+  return (
+    <ErrorBoundary>
+      <MetaverseCampus />
+    </ErrorBoundary>
+  );
 }
