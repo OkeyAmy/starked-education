@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
+import { enrollmentPersonalInfoSchema } from '@/lib/schemas';
 
 const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   course,
@@ -27,6 +28,10 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  // Per-field error map for sub-steps that opt into inline validation
+  // (`PersonalInfoStep` is the only one for now). Reset whenever the
+  // step transitions.
+  const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
 
   const [personalInfo, setPersonalInfo] = useState({
     firstName: '',
@@ -102,14 +107,29 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
 
   const handleNext = () => {
     const currentStepData = steps[currentStep];
-    
-    if (currentStepData.validation) {
+
+    // Personal-info step: validate through the Zod schema so we can
+    // surface per-field errors inside `PersonalInfoStep`. Other steps
+    // keep their existing boolean validators.
+    if (currentStepData.id === 'personal-info') {
+      const result = enrollmentPersonalInfoSchema.safeParse(personalInfo);
+      if (!result.success) {
+        const fieldErrors: Record<string, string> = {};
+        for (const issue of result.error.issues) {
+          const key = issue.path[0];
+          if (typeof key === 'string' && !(key in fieldErrors)) {
+            fieldErrors[key] = issue.message;
+          }
+        }
+        setStepErrors(fieldErrors);
+        setError('Please correct the highlighted fields before proceeding');
+        return;
+      }
+      setStepErrors({});
+    } else if (currentStepData.validation) {
       let isValid = false;
-      
+
       switch (currentStepData.id) {
-        case 'personal-info':
-          isValid = currentStepData.validation({ personalInfo });
-          break;
         case 'wallet-connection':
           isValid = currentStepData.validation({ wallet });
           break;
@@ -119,15 +139,15 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
         default:
           isValid = true;
       }
-      
+
       if (!isValid) {
         setError('Please complete the current step before proceeding');
         return;
       }
     }
-    
+
     setError(null);
-    
+
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -288,6 +308,7 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
           onPaymentError={handlePaymentError}
           onPaymentPending={handlePaymentPending}
           transactionHash={transactionHash}
+          errors={stepErrors}
         />
 
         {error && (
@@ -343,10 +364,19 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
 };
 
 // Step Components
-const PersonalInfoStep: React.FC<any> = ({ personalInfo, onPersonalInfoChange }) => {
+const PersonalInfoStep: React.FC<any> = ({
+  personalInfo,
+  onPersonalInfoChange,
+  errors = {},
+}) => {
   const handleChange = (field: string, value: string) => {
     onPersonalInfoChange((prev: any) => ({ ...prev, [field]: value }));
   };
+
+  const fieldClass = (key: string) =>
+    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+      errors[key] ? 'border-red-400' : 'border-gray-300'
+    }`;
 
   return (
     <div className="space-y-4">
@@ -361,11 +391,18 @@ const PersonalInfoStep: React.FC<any> = ({ personalInfo, onPersonalInfoChange })
             name="firstName"
             autoComplete="given-name"
             required
+            aria-invalid={Boolean(errors.firstName)}
+            aria-describedby={errors.firstName ? 'enrollment-first-name-error' : undefined}
             value={personalInfo.firstName}
             onChange={(e) => handleChange('firstName', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className={fieldClass('firstName')}
             placeholder="Enter your first name"
           />
+          {errors.firstName && (
+            <p id="enrollment-first-name-error" role="alert" className="mt-1 text-sm text-red-600">
+              {errors.firstName}
+            </p>
+          )}
         </div>
         <div>
           <label htmlFor="enrollment-last-name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -377,11 +414,18 @@ const PersonalInfoStep: React.FC<any> = ({ personalInfo, onPersonalInfoChange })
             name="lastName"
             autoComplete="family-name"
             required
+            aria-invalid={Boolean(errors.lastName)}
+            aria-describedby={errors.lastName ? 'enrollment-last-name-error' : undefined}
             value={personalInfo.lastName}
             onChange={(e) => handleChange('lastName', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className={fieldClass('lastName')}
             placeholder="Enter your last name"
           />
+          {errors.lastName && (
+            <p id="enrollment-last-name-error" role="alert" className="mt-1 text-sm text-red-600">
+              {errors.lastName}
+            </p>
+          )}
         </div>
       </div>
 
@@ -395,11 +439,18 @@ const PersonalInfoStep: React.FC<any> = ({ personalInfo, onPersonalInfoChange })
           name="email"
           autoComplete="email"
           required
+          aria-invalid={Boolean(errors.email)}
+          aria-describedby={errors.email ? 'enrollment-email-error' : undefined}
           value={personalInfo.email}
           onChange={(e) => handleChange('email', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className={fieldClass('email')}
           placeholder="your.email@example.com"
         />
+        {errors.email && (
+          <p id="enrollment-email-error" role="alert" className="mt-1 text-sm text-red-600">
+            {errors.email}
+          </p>
+        )}
       </div>
 
       <div>
@@ -411,11 +462,18 @@ const PersonalInfoStep: React.FC<any> = ({ personalInfo, onPersonalInfoChange })
           id="enrollment-phone"
           name="phone"
           autoComplete="tel"
+          aria-invalid={Boolean(errors.phone)}
+          aria-describedby={errors.phone ? 'enrollment-phone-error' : undefined}
           value={personalInfo.phone}
           onChange={(e) => handleChange('phone', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className={fieldClass('phone')}
           placeholder="+1 (555) 123-4567"
         />
+        {errors.phone && (
+          <p id="enrollment-phone-error" role="alert" className="mt-1 text-sm text-red-600">
+            {errors.phone}
+          </p>
+        )}
       </div>
     </div>
   );

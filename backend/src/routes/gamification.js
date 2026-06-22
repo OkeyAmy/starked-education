@@ -4,6 +4,46 @@ const GamificationEngine = require('../services/gamification/GamificationEngine'
 const Achievement = require('../models/Achievement');
 const Challenge = require('../models/Challenge');
 const logger = require('../utils/logger');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
+
+const gamificationEventSchema = {
+  body: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+    event: Joi.string().trim().min(1).required(),
+    data: Joi.object().optional(),
+  })
+};
+
+const awardPointsSchema = {
+  body: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+    amount: Joi.number().integer().min(1).max(100000).required(),
+    category: Joi.string().trim().min(1).required(),
+    description: Joi.string().trim().min(1).max(500).required(),
+    metadata: Joi.object().optional(),
+  })
+};
+
+const joinChallengeSchema = {
+  params: Joi.object({
+    challengeId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+  })
+};
+
+const updateChallengeProgressSchema = {
+  params: Joi.object({
+    challengeId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+    objectiveId: Joi.string().trim().min(1).required(),
+    progress: Joi.number().min(0).required(),
+  })
+};
 
 // Initialize engine
 const gamificationEngine = new GamificationEngine();
@@ -68,16 +108,9 @@ router.get('/user/:userId/achievements', async (req, res) => {
  * @route POST /api/gamification/event
  * @desc Process gamification event (lesson complete, quiz complete, etc.)
  */
-router.post('/event', async (req, res) => {
+router.post('/event', validateRequestSchema(gamificationEventSchema), async (req, res) => {
   try {
     const { userId, event, data } = req.body;
-
-    if (!userId || !event) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: userId, event'
-      });
-    }
 
     const result = await gamificationEngine.processEvent(userId, event, data);
 
@@ -98,16 +131,9 @@ router.post('/event', async (req, res) => {
  * @route POST /api/gamification/points/award
  * @desc Award points to user
  */
-router.post('/points/award', async (req, res) => {
+router.post('/points/award', validateRequestSchema(awardPointsSchema), async (req, res) => {
   try {
     const { userId, amount, category, description, metadata } = req.body;
-
-    if (!userId || amount === undefined || !category || !description) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: userId, amount, category, description'
-      });
-    }
 
     const transaction = await gamificationEngine.awardPoints(
       userId, 
@@ -163,7 +189,7 @@ router.get('/challenges', async (req, res) => {
  * @route POST /api/gamification/challenges/:challengeId/join
  * @desc Join a challenge
  */
-router.post('/challenges/:challengeId/join', async (req, res) => {
+router.post('/challenges/:challengeId/join', validateRequestSchema(joinChallengeSchema), async (req, res) => {
   try {
     const { challengeId } = req.params;
     const { userId } = req.body;
@@ -211,7 +237,7 @@ router.post('/challenges/:challengeId/join', async (req, res) => {
  * @route PUT /api/gamification/challenges/:challengeId/progress
  * @desc Update challenge progress
  */
-router.put('/challenges/:challengeId/progress', async (req, res) => {
+router.put('/challenges/:challengeId/progress', validateRequestSchema(updateChallengeProgressSchema), async (req, res) => {
   try {
     const { challengeId } = req.params;
     const { userId, objectiveId, progress } = req.body;

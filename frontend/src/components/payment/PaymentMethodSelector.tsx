@@ -13,18 +13,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { 
-  CreditCard, 
-  Wallet, 
-  Smartphone, 
-  Building, 
-  CheckCircle, 
+import {
+  CreditCard,
+  Wallet,
+  Smartphone,
+  Building,
+  CheckCircle,
   AlertCircle,
   Loader2,
   ExternalLink,
   Copy,
   RefreshCw
 } from 'lucide-react';
+import { paymentCardSchema, paymentBankSchema } from '@/lib/schemas';
 
 interface PaymentMethod {
   id: string;
@@ -83,6 +84,11 @@ export function PaymentMethodSelector({
   });
   const [error, setError] = useState<string | null>(null);
   const [exchangeRates, setExchangeRates] = useState<any>({});
+  // Per-field inline errors for credit-card form, populated from
+  // `paymentCardSchema.safeParse(cardData)` so we surface Zod's messages
+  // without re-implementing them.
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const [bankErrors, setBankErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchPaymentMethods();
@@ -280,15 +286,28 @@ export function PaymentMethodSelector({
   };
 
   const handleCreditCardPayment = async () => {
+    // Validate card data via the centralized Zod schema. Per-field errors
+    // surface inline; only proceed to the network call when everything
+    // passes — fulfilling the DoD item "No form submission without
+    // passing validation".
+    const result = paymentCardSchema.safeParse(cardData);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const key = issue.path[0];
+        if (typeof key === 'string' && !(key in fieldErrors)) {
+          fieldErrors[key] = issue.message;
+        }
+      }
+      setCardErrors(fieldErrors);
+      setError('Please correct the highlighted card details');
+      setIsProcessing(false);
+      return;
+    }
+    setCardErrors({});
+
     setIsProcessing(true);
     try {
-      // Validate card data
-      if (!cardData.number || !cardData.expiry || !cardData.cvv || !cardData.name) {
-        setError('Please fill in all card details');
-        setIsProcessing(false);
-        return;
-      }
-
       // In a real implementation, this would integrate with a payment processor like Stripe
       const response = await fetch('/api/payments/intent', {
         method: 'POST',
@@ -538,44 +557,72 @@ export function PaymentMethodSelector({
                 <Label htmlFor="cardName">Cardholder Name</Label>
                 <Input
                   id="cardName"
+                  aria-invalid={Boolean(cardErrors.name)}
+                  aria-describedby={cardErrors.name ? 'cardName-error' : undefined}
                   placeholder="John Doe"
                   value={cardData.name}
                   onChange={(e) => setCardData(prev => ({ ...prev, name: e.target.value }))}
                 />
+                {cardErrors.name && (
+                  <p id="cardName-error" role="alert" className="mt-1 text-sm text-red-600">
+                    {cardErrors.name}
+                  </p>
+                )}
               </div>
-              
+
               <div className="col-span-2">
                 <Label htmlFor="cardNumber">Card Number</Label>
                 <Input
                   id="cardNumber"
+                  aria-invalid={Boolean(cardErrors.number)}
+                  aria-describedby={cardErrors.number ? 'cardNumber-error' : undefined}
                   placeholder="4242 4242 4242 4242"
                   value={cardData.number}
                   onChange={(e) => setCardData(prev => ({ ...prev, number: e.target.value }))}
                   maxLength={19}
                 />
+                {cardErrors.number && (
+                  <p id="cardNumber-error" role="alert" className="mt-1 text-sm text-red-600">
+                    {cardErrors.number}
+                  </p>
+                )}
               </div>
 
               <div>
                 <Label htmlFor="expiry">Expiry Date</Label>
                 <Input
                   id="expiry"
+                  aria-invalid={Boolean(cardErrors.expiry)}
+                  aria-describedby={cardErrors.expiry ? 'expiry-error' : undefined}
                   placeholder="MM/YY"
                   value={cardData.expiry}
                   onChange={(e) => setCardData(prev => ({ ...prev, expiry: e.target.value }))}
                   maxLength={5}
                 />
+                {cardErrors.expiry && (
+                  <p id="expiry-error" role="alert" className="mt-1 text-sm text-red-600">
+                    {cardErrors.expiry}
+                  </p>
+                )}
               </div>
 
               <div>
                 <Label htmlFor="cvv">CVV</Label>
                 <Input
                   id="cvv"
+                  aria-invalid={Boolean(cardErrors.cvv)}
+                  aria-describedby={cardErrors.cvv ? 'cvv-error' : undefined}
                   placeholder="123"
                   value={cardData.cvv}
                   onChange={(e) => setCardData(prev => ({ ...prev, cvv: e.target.value }))}
                   maxLength={4}
                   type="password"
                 />
+                {cardErrors.cvv && (
+                  <p id="cvv-error" role="alert" className="mt-1 text-sm text-red-600">
+                    {cardErrors.cvv}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -616,7 +663,9 @@ export function PaymentMethodSelector({
             <Alert className="border-blue-200 bg-blue-50">
               <AlertCircle className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
-                Please transfer the amount to the bank account below. Your enrollment will be confirmed once the payment is received.
+                Please transfer the amount to the bank account below. Once
+                you have initiated the transfer, confirm your reference
+                details below.
               </AlertDescription>
             </Alert>
 
@@ -625,7 +674,7 @@ export function PaymentMethodSelector({
                 <Label>Bank Name</Label>
                 <Input value="StarkEd Education Bank" readOnly />
               </div>
-              
+
               <div>
                 <Label>Account Number</Label>
                 <Input value="1234567890" readOnly className="font-mono" />
@@ -640,6 +689,101 @@ export function PaymentMethodSelector({
                 <Label>Reference</Label>
                 <Input value={`ENROLL-${Date.now()}`} readOnly className="font-mono" />
               </div>
+            </div>
+
+            {/*
+              Optional user-side metadata. Validated via `paymentBankSchema`
+              when the "I have initiated the transfer" button is clicked —
+              keeps the existing UI structure intact while gaining Zod-level
+              validation. Validation is non-blocking for the flow (the real
+              transfer happens out-of-band) so we surface errors inline
+              rather than refusing submission.
+            */}
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="font-medium text-sm">Confirm your transfer details</h4>
+              <div>
+                <Label htmlFor="bankAccountName">Account name on transfer</Label>
+                <Input
+                  id="bankAccountName"
+                  aria-invalid={Boolean(bankErrors.accountName)}
+                  aria-describedby={bankErrors.accountName ? 'bankAccountName-error' : undefined}
+                  placeholder="Jane Doe"
+                  value={bankData.accountName}
+                  onChange={(e) => setBankData(prev => ({ ...prev, accountName: e.target.value }))}
+                />
+                {bankErrors.accountName && (
+                  <p
+                    id="bankAccountName-error"
+                    role="alert"
+                    className="mt-1 text-sm text-red-600"
+                  >
+                    {bankErrors.accountName}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="bankAccountNumber">Account number</Label>
+                <Input
+                  id="bankAccountNumber"
+                  aria-invalid={Boolean(bankErrors.accountNumber)}
+                  aria-describedby={bankErrors.accountNumber ? 'bankAccountNumber-error' : undefined}
+                  placeholder="12345678"
+                  value={bankData.accountNumber}
+                  onChange={(e) => setBankData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                />
+                {bankErrors.accountNumber && (
+                  <p
+                    id="bankAccountNumber-error"
+                    role="alert"
+                    className="mt-1 text-sm text-red-600"
+                  >
+                    {bankErrors.accountNumber}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="bankRoutingNumber">Routing number</Label>
+                <Input
+                  id="bankRoutingNumber"
+                  aria-invalid={Boolean(bankErrors.routingNumber)}
+                  aria-describedby={bankErrors.routingNumber ? 'bankRoutingNumber-error' : undefined}
+                  placeholder="021000021"
+                  value={bankData.routingNumber}
+                  onChange={(e) => setBankData(prev => ({ ...prev, routingNumber: e.target.value }))}
+                />
+                {bankErrors.routingNumber && (
+                  <p
+                    id="bankRoutingNumber-error"
+                    role="alert"
+                    className="mt-1 text-sm text-red-600"
+                  >
+                    {bankErrors.routingNumber}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const result = paymentBankSchema.safeParse(bankData);
+                  if (!result.success) {
+                    const fieldErrors: Record<string, string> = {};
+                    for (const issue of result.error.issues) {
+                      const key = issue.path[0];
+                      if (typeof key === 'string' && !(key in fieldErrors)) {
+                        fieldErrors[key] = issue.message;
+                      }
+                    }
+                    setBankErrors(fieldErrors);
+                    return;
+                  }
+                  setBankErrors({});
+                  onPaymentMethodSelected?.(getPaymentMethodInfo('bank_transfer'), result.data);
+                }}
+                disabled={isProcessing}
+                className="w-full"
+              >
+                I have initiated the transfer
+              </Button>
             </div>
 
             <div className="text-sm text-muted-foreground">

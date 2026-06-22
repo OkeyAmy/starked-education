@@ -78,9 +78,15 @@ export interface ProfileSettings {
 export interface ProfileFormData {
   name: string;
   email: string;
-  bio: string;
-  location: string;
-  website: string;
+  // `bio`/`location` carry `.default('')` in `profileSchema` so they are
+  // always submitted as a string (Zod fills the default), while `website`
+  // stays genuinely optional. Marking them optional here keeps
+  // `ProfileFormData` compatible with the Zod-inferred `ProfileFormDataZ`
+  // so callers don't have to narrow on the form layer. See
+  // `frontend/src/lib/schemas.ts` for the schema source of truth.
+  bio?: string;
+  location?: string;
+  website?: string;
   privacy: 'public' | 'private' | 'friends-only';
 }
 

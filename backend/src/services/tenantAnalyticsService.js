@@ -54,7 +54,7 @@ class TenantAnalyticsService {
       ]);
 
       // Growth metrics over time
-      const growthMetrics = await this.getGrowthMetrics(startDate);
+      const growthMetrics = await this.getGrowthMetrics(startDate, tenantId);
 
       // Geographic distribution (anonymized sample data)
       const geographicData = [
@@ -231,15 +231,20 @@ class TenantAnalyticsService {
 
   /**
    * Get growth metrics over time
+   * @param {Date} startDate - Start date for the filter range
+   * @param {string|null} tenantId - Optional tenant ID to scope metrics to a single tenant
    */
-  async getGrowthMetrics(startDate) {
+  async getGrowthMetrics(startDate, tenantId = null) {
     try {
+      const tenantMatch = { createdAt: { $gte: startDate } };
+      if (tenantId) {
+        tenantMatch._id = new mongoose.Types.ObjectId(tenantId);
+      }
+
       // Daily tenant growth
       const dailyGrowth = await Tenant.aggregate([
         {
-          $match: {
-            createdAt: { $gte: startDate }
-          }
+          $match: tenantMatch
         },
         {
           $group: {
@@ -257,12 +262,15 @@ class TenantAnalyticsService {
         }
       ]);
 
+      const userMatch = { createdAt: { $gte: startDate } };
+      if (tenantId) {
+        userMatch.tenantId = new mongoose.Types.ObjectId(tenantId);
+      }
+
       // Daily user growth
       const userGrowth = await TenantUser.aggregate([
         {
-          $match: {
-            createdAt: { $gte: startDate }
-          }
+          $match: userMatch
         },
         {
           $group: {

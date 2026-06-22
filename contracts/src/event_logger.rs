@@ -11,6 +11,18 @@ pub enum EventType {
     CourseEnrollment,
 }
 
+// Marketplace-specific events
+#[contracttype]
+#[derive(Clone)]
+pub enum MarketplaceEvent {
+    ListingCreated,
+    ListingUpdated,
+    BidPlaced,
+    SaleCompleted,
+    ListingCancelled,
+}
+
+
 #[contracttype]
 #[derive(Clone)]
 pub struct EventLog {

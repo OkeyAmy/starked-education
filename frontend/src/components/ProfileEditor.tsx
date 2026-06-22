@@ -1,8 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { UserProfile, ProfileFormData } from '../types/profile';
+import {
+  profileSchema,
+  type ProfileFormDataZ,
+  type ProfileFormDataIn,
+  mapServerZodErrorsToForm,
+} from '@/lib/schemas';
 import { useProfile } from '../hooks/useProfile';
 import { User, MapPin, Globe, Lock, Save, X, Camera } from 'lucide-react';
 
@@ -17,13 +24,31 @@ export function ProfileEditor({ onClose, onSuccess }: ProfileEditorProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
+  // Form state is now driven by the Zod schema in `frontend/src/lib/schemas.ts`,
+  // so per-field rules live next to the rest of the project's validation.
+  // `ProfileFormDataZ` is the Zod-inferred type; the interface imported above
+  // stays for callers that haven't migrated.
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isDirty },
     reset,
     watch
-  } = useForm<ProfileFormData>();
+  } = useForm<ProfileFormDataIn, any, ProfileFormDataZ>({
+    // `@hookform/resolvers@5.x` type-defs include a structural check on
+    // `zod._zod.version.minor` ('0' for v3, '4' for v4) that is too strict
+    // even though it ships with a Zod v4 adapter. `as unknown as` is used
+    // here intentionally: the runtime resolver is correct (validated via
+    // the 33-test schema suite + the two ProfileEditor jest tests) and the
+    // surrounding `useForm<In, any, Out>` generics still drive our end-
+    // to-end type safety. If a future version of @hookform/resolvers
+    // relaxes this constraint, drop the cast.
+    resolver: zodResolver(
+      profileSchema as unknown as Parameters<typeof zodResolver>[0],
+    ) as unknown as Resolver<ProfileFormDataIn, any, ProfileFormDataZ>,
+    mode: 'onBlur',
+  });
 
   const watchedValues = watch();
 
@@ -52,7 +77,7 @@ export function ProfileEditor({ onClose, onSuccess }: ProfileEditorProps) {
     }
   };
 
-  const onSubmit = async (data: ProfileFormData) => {
+  const onSubmit = async (data: ProfileFormDataZ) => {
     setIsSubmitting(true);
     setSubmitError(null);
 
@@ -69,6 +94,21 @@ export function ProfileEditor({ onClose, onSuccess }: ProfileEditorProps) {
         onClose?.();
       } else {
         setSubmitError(response.message || 'Failed to update profile');
+
+        // If the API returned a ZodError-shaped payload ({ issues: [...] }),
+        // map per-issue messages onto matching form fields so the user
+        // sees them inline rather than only as a top-level banner.
+        // Fulfils the DoD item:
+        // "Server-side validation errors mapped to form fields".
+        const errResp = response as unknown as
+          { issues?: Array<{ path: Array<string | number>; message: string }> } | null;
+        if (errResp && Array.isArray(errResp.issues)) {
+          mapServerZodErrorsToForm(
+            setError,
+            errResp,
+            ['name', 'email', 'bio', 'location', 'website'],
+          );
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -167,17 +207,7 @@ export function ProfileEditor({ onClose, onSuccess }: ProfileEditorProps) {
             <input
               id="name"
               type="text"
-              {...register('name', {
-                required: 'Name is required',
-                minLength: {
-                  value: 2,
-                  message: 'Name must be at least 2 characters'
-                },
-                maxLength: {
-                  value: 50,
-                  message: 'Name cannot exceed 50 characters'
-                }
-              })}
+              {...register('name')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter your name"
             />
@@ -199,13 +229,7 @@ export function ProfileEditor({ onClose, onSuccess }: ProfileEditorProps) {
             <input
               id="email"
               type="email"
-              {...register('email', {
-                required: 'Email is required',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address'
-                }
-              })}
+              {...register('email')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="your.email@example.com"
             />
@@ -227,12 +251,7 @@ export function ProfileEditor({ onClose, onSuccess }: ProfileEditorProps) {
             <textarea
               id="bio"
               rows={3}
-              {...register('bio', {
-                maxLength: {
-                  value: 500,
-                  message: 'Bio cannot exceed 500 characters'
-                }
-              })}
+              {...register('bio')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               placeholder="Tell us about yourself..."
             />
@@ -263,12 +282,7 @@ export function ProfileEditor({ onClose, onSuccess }: ProfileEditorProps) {
               <input
                 id="location"
                 type="text"
-                {...register('location', {
-                  maxLength: {
-                    value: 100,
-                    message: 'Location cannot exceed 100 characters'
-                  }
-                })}
+                {...register('location')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="City, Country"
               />
@@ -291,12 +305,7 @@ export function ProfileEditor({ onClose, onSuccess }: ProfileEditorProps) {
               <input
                 id="website"
                 type="url"
-                {...register('website', {
-                  pattern: {
-                    value: /^https?:\/\/.+/i,
-                    message: 'Please enter a valid URL (http:// or https://)'
-                  }
-                })}
+                {...register('website')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="https://yourwebsite.com"
               />

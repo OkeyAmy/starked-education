@@ -6,6 +6,18 @@ const { v4: uuidv4 } = require('uuid');
 
 class TenantService {
   /**
+   * Validates that a tenant exists and is accessible.
+   * Throws if not found.
+   */
+  async validateTenantAccess(tenantId) {
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+    return tenant;
+  }
+
+  /**
    * Create a new tenant
    */
   async createTenant(tenantData, adminUserData) {
@@ -205,6 +217,7 @@ class TenantService {
    */
   async getTenantUsers(tenantId, options = {}) {
     try {
+      await this.validateTenantAccess(tenantId);
       const {
         page = 1,
         limit = 20,
@@ -264,6 +277,7 @@ class TenantService {
    */
   async updateTenantSettings(tenantId, settings) {
     try {
+      await this.validateTenantAccess(tenantId);
       const tenant = await Tenant.findByIdAndUpdate(
         tenantId,
         { $set: { settings: { ...settings } } },
@@ -285,6 +299,7 @@ class TenantService {
    */
   async updateTenantBranding(tenantId, branding) {
     try {
+      await this.validateTenantAccess(tenantId);
       const tenant = await Tenant.findByIdAndUpdate(
         tenantId,
         { $set: { branding: { ...branding } } },
@@ -360,6 +375,7 @@ class TenantService {
    */
   async updateTenantStatus(tenantId, status) {
     try {
+      await this.validateTenantAccess(tenantId);
       const tenant = await Tenant.findByIdAndUpdate(
         tenantId,
         { $set: { status } },

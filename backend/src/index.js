@@ -44,7 +44,10 @@ const quizRoutes = resolveRoute(require('./routes/quizRoutes'));
 const eventLoggerRoutes = resolveRoute(require('./routes/eventLoggerRoutes'));
 const syncRoutes = resolveRoute(require('./routes/syncRoutes'));
 const rbacRoutes = resolveRoute(require('./routes/rbacRoutes'));
+const authRoutes = require('./routes/auth');
 const contentRoutes = require('./routes/content');
+const courseRoutes = require('./routes/courses');
+const searchRoutes = require('./routes/search');
 const transactionRoutes = require('./routes/transactions');
 const notificationRoutes = resolveRoute(require('./routes/notificationRoutes'));
 
@@ -113,7 +116,10 @@ const v1Router = createVersionedRouter('v1');
 v1Router.use('/quizzes', quizRoutes);
 v1Router.use('/events', eventLoggerRoutes);
 v1Router.use('/sync', syncRoutes);
+v1Router.use('/auth', authRoutes);
 v1Router.use('/content', contentRoutes);
+v1Router.use('/courses', courseRoutes);
+v1Router.use('/search', searchRoutes);
 v1Router.use('/rbac', rbacRoutes);
 v1Router.use('/transactions', transactionRoutes);
 v1Router.use('/notifications', notificationRoutes);
@@ -169,6 +175,8 @@ app.use('/api/v2', v2Router);
 
 // Schemas helper for versioned responses
 const { createVersionedResponse } = require('./utils/schemas');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const { ValidationError } = require('./utils/errors');
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -194,35 +202,17 @@ app.get('/api/health', (req, res) => {
 app.use('/api/v:version*', (req, res, next) => {
   const version = `v${req.params.version}`;
   if (!SUPPORTED_VERSIONS.includes(version)) {
-    res.status(400).json({
-      success: false,
-      message: `Unsupported API version: ${version}`,
-      supportedVersions: SUPPORTED_VERSIONS,
-    });
+    return next(new ValidationError(`Unsupported API version: ${version}`, { supportedVersions: SUPPORTED_VERSIONS }));
   } else {
     next();
   }
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Endpoint not found',
-    path: req.originalUrl,
-  });
-});
+// 404 handler - must be after all routes, before error handler
+app.use(notFoundHandler);
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
-});
+// Global error handler - must be last
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 

@@ -91,7 +91,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ socket, roomId, username, onClose
   };
 
   return (
-    <div className="w-80 bg-gray-800 flex flex-col border-l border-gray-700">
+    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-80 bg-gray-800 flex flex-col border-l border-gray-700 md:relative md:z-0">
       {/* Header */}
       <div className="p-4 border-b border-gray-700 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Chat</h3>

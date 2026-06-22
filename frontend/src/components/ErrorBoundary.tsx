@@ -17,6 +17,9 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  public static defaultProps = {
+    onReset: undefined
+  };
   public state: State = {
     hasError: false
   };
@@ -120,3 +123,5 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+export default ErrorBoundary;

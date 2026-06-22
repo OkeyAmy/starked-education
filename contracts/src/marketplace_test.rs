@@ -5,7 +5,7 @@ use crate::marketplace::{MarketplaceContract, MarketplaceContractClient, Marketp
 use crate::utils::storage::StorageKey;
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    Address, Env, String,
+    Address, Env, String, symbol_short,
 };
 
 #[test]
@@ -42,8 +42,14 @@ fn test_listing_and_purchase() {
 
     let listing_id = client.list_credential(&seller, &credential_id, &price, &royalty_bps);
     assert_eq!(listing_id, 1);
+    // Verify ListingCreated event
+    let events = env.events().all();
+    assert!(events.iter().any(|(topics, _): &(_, _)| *topics == (symbol_short!("marketplace"), symbol_short!("created"))));
 
     client.purchase_credential(&buyer, &listing_id);
+    // Verify SaleCompleted event
+    let events = env.events().all();
+    assert!(events.iter().any(|(topics, _): &(_, _)| *topics == (symbol_short!("marketplace"), symbol_short!("sale_completed"))));
 
     // Trade count should increment
     let price_after = client.calculate_bonding_price(&credential_id);
@@ -70,6 +76,9 @@ fn test_licensing_and_bonding_curve() {
 
     // Rent
     client.rent_credential(&tenant, &credential_id, &3600);
+    // Verify Rented event
+    let events = env.events().all();
+    assert!(events.iter().any(|(topics, _): &(_, _)| *topics == (symbol_short!("marketplace"), symbol_short!("rented"))));
 
     // Bonding curve check: we need trades to increase price
     // Since rent_credential doesn't increment TradeCount in the current implementation (only purchase does),
@@ -127,6 +136,11 @@ fn test_dispute_resolution() {
 
     let dispute_id = client.open_dispute(&buyer, &listing_id, &reason);
     assert_eq!(dispute_id, 1);
+    let events = env.events().all();
+    assert!(events.iter().any(|(topics, _): &(_, _)| *topics == (symbol_short!("marketplace"), symbol_short!("dispute_opened"))));
 
     client.resolve_dispute(&admin, &dispute_id, &true);
+    // Verify DisputeResolved event
+    let events = env.events().all();
+    assert!(events.iter().any(|(topics, _): &(_, _)| *topics == (symbol_short!("marketplace"), symbol_short!("dispute_resolved"))));
 }

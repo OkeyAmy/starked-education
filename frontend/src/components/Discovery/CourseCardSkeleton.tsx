@@ -1,5 +1,5 @@
 import React from 'react';
-import { Skeleton } from '../ui/Skeleton';
+import { Skeleton, SkeletonRegion } from '../ui/Skeleton';
 import { ViewMode } from './types';
 
 /**
@@ -63,17 +63,14 @@ export const CourseGridSkeleton: React.FC<{
   count?: number;
   view?: ViewMode;
 }> = ({ count = 6, view = 'grid' }) => (
-  <div
-    role="status"
-    aria-busy="true"
+  <SkeletonRegion
     aria-label="Loading courses"
     className="contents"
   >
     {Array.from({ length: count }).map((_, index) => (
       <CourseCardSkeleton key={index} view={view} />
     ))}
-    <span className="sr-only">Loading courses</span>
-  </div>
+  </SkeletonRegion>
 );
 
 export default CourseCardSkeleton;

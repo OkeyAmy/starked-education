@@ -1,16 +1,16 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String};
 
-pub mod utils;
-pub mod user_profile;
-pub mod tokenomics;
 pub mod governance;
 #[cfg(test)]
 pub mod governance_test;
+pub mod tokenomics;
 #[cfg(test)]
 pub mod tokenomics_test;
+pub mod user_profile;
 #[cfg(test)]
 pub mod user_profile_test;
+pub mod utils;
 
 /// Core storage keys
 #[contracttype]
@@ -67,9 +67,13 @@ impl StarkEdContract {
             panic!("Contract already initialized");
         }
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage().instance().set(&DataKey::CredentialCount, &0u64);
+        env.storage()
+            .instance()
+            .set(&DataKey::CredentialCount, &0u64);
         env.storage().instance().set(&DataKey::CourseCount, &0u64);
-        env.storage().instance().set(&DataKey::AchievementCount, &0u64);
+        env.storage()
+            .instance()
+            .set(&DataKey::AchievementCount, &0u64);
     }
 
     /// Issue a new credential
@@ -82,13 +86,17 @@ impl StarkEdContract {
         ipfs_hash: String,
     ) -> u64 {
         issuer.require_auth();
-        let admin: Address = env.storage().instance()
+        let admin: Address = env
+            .storage()
+            .instance()
             .get(&DataKey::Admin)
             .unwrap_or_else(|| panic!("Not initialized"));
         if issuer != admin {
             panic!("Only admin can issue credentials");
         }
-        let count: u64 = env.storage().instance()
+        let count: u64 = env
+            .storage()
+            .instance()
             .get(&DataKey::CredentialCount)
             .unwrap_or(0);
         let credential_id = count + 1;
@@ -101,21 +109,28 @@ impl StarkEdContract {
             ipfs_hash,
             timestamp: env.ledger().timestamp(),
         };
-        env.storage().instance().set(&DataKey::Credential(credential_id), &credential);
-        env.storage().instance().set(&DataKey::CredentialCount, &credential_id);
+        env.storage()
+            .instance()
+            .set(&DataKey::Credential(credential_id), &credential);
+        env.storage()
+            .instance()
+            .set(&DataKey::CredentialCount, &credential_id);
         credential_id
     }
 
     /// Get credential by ID
     pub fn get_credential(env: Env, credential_id: u64) -> Credential {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&DataKey::Credential(credential_id))
             .unwrap_or_else(|| panic!("Credential not found"))
     }
 
     /// Verify a credential (exists check)
     pub fn verify_credential(env: Env, credential_id: u64) -> bool {
-        env.storage().instance().has(&DataKey::Credential(credential_id))
+        env.storage()
+            .instance()
+            .has(&DataKey::Credential(credential_id))
     }
 
     /// Create a course
@@ -127,13 +142,17 @@ impl StarkEdContract {
         price: u64,
     ) -> u64 {
         instructor.require_auth();
-        let admin: Address = env.storage().instance()
+        let admin: Address = env
+            .storage()
+            .instance()
             .get(&DataKey::Admin)
             .unwrap_or_else(|| panic!("Not initialized"));
         if instructor != admin {
             panic!("Only admin can create courses");
         }
-        let course_count: u64 = env.storage().instance()
+        let course_count: u64 = env
+            .storage()
+            .instance()
             .get(&DataKey::CourseCount)
             .unwrap_or(0);
         let course_id = course_count + 1;
@@ -143,35 +162,43 @@ impl StarkEdContract {
             description,
             price,
         };
-        env.storage().instance().set(&DataKey::Course(course_id), &course);
-        env.storage().instance().set(&DataKey::CourseCount, &course_id);
+        env.storage()
+            .instance()
+            .set(&DataKey::Course(course_id), &course);
+        env.storage()
+            .instance()
+            .set(&DataKey::CourseCount, &course_id);
         course_id
     }
 
     /// Get course by ID
     pub fn get_course(env: Env, course_id: u64) -> Course {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&DataKey::Course(course_id))
             .unwrap_or_else(|| panic!("Course not found"))
     }
 
     /// Get credential count
     pub fn get_credential_count(env: Env) -> u64 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&DataKey::CredentialCount)
             .unwrap_or(0)
     }
 
     /// Get course count
     pub fn get_course_count(env: Env) -> u64 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&DataKey::CourseCount)
             .unwrap_or(0)
     }
 
     /// Get admin address
     pub fn get_admin(env: Env) -> Address {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&DataKey::Admin)
             .unwrap_or_else(|| panic!("Not initialized"))
     }

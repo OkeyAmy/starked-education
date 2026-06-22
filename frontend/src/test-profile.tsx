@@ -58,6 +58,28 @@ const testCredentials: Credential[] = [
     verificationStatus: 'verified',
     verificationUrl: 'https://verify.test.com/TEST-001',
     skills: ['Test Skill 1', 'Test Skill 2']
+  },
+  {
+    id: 'cred-2',
+    title: 'TypeScript Certification',
+    issuer: 'TypeScript Academy',
+    issueDate: '2023-03-15',
+    credentialId: 'TS-2023-001',
+    type: 'certificate',
+    verificationStatus: 'verified',
+    verificationUrl: 'https://verify.test.com/TS-2023-001',
+    skills: ['TypeScript', 'Static Typing', 'Generics']
+  },
+  {
+    id: 'cred-3',
+    title: 'React Developer',
+    issuer: 'React Foundation',
+    issueDate: '2023-06-22',
+    credentialId: 'REACT-DEV-42',
+    type: 'badge',
+    verificationStatus: 'verified',
+    verificationUrl: 'https://verify.test.com/REACT-DEV-42',
+    skills: ['React', 'Hooks', 'JSX']
   }
 ];
 

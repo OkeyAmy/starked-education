@@ -9,16 +9,95 @@ const RecommendationEngine = require('../services/recommendationEngine');
 const UserBehaviorTracker = require('../services/userBehaviorTracker');
 const ABTestingFramework = require('../services/abTestingFramework');
 
-// Middleware for request validation
-const validateRequest = (req, res, next) => {
-    try {
-        if (!req.body && req.method !== 'GET') {
-            return res.status(400).json({ error: 'Request body is required' });
-        }
-        next();
-    } catch (error) {
-        res.status(400).json({ error: 'Invalid request format' });
-    }
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
+
+// Validation schemas
+const getUserRecommendationsSchema = {
+  params: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+  })
+};
+
+const getUserRecommendationsBodySchema = {
+  params: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    context: Joi.object().optional(),
+    limit: Joi.number().integer().min(1).max(100).optional(),
+    filters: Joi.object().optional(),
+  })
+};
+
+const updateProfileSchema = {
+  params: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    interests: Joi.array().items(Joi.string()).optional(),
+    skillLevel: Joi.string().valid('beginner', 'intermediate', 'advanced').optional(),
+    preferences: Joi.object().optional(),
+  })
+};
+
+const trackInteractionSchema = {
+  params: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    itemId: Joi.string().trim().min(1).required(),
+    interactionType: Joi.string().valid('view', 'click', 'enroll', 'complete', 'rate', 'share').required(),
+    metadata: Joi.object().optional(),
+  })
+};
+
+const trainModelSchema = {
+  body: Joi.object({
+    algorithm: Joi.string().valid('collaborative', 'content-based', 'hybrid', 'all').optional(),
+    forceRetrain: Joi.boolean().optional(),
+    parameters: Joi.object().optional(),
+  })
+};
+
+const evaluateModelSchema = {
+  body: Joi.object({
+    modelId: Joi.string().trim().min(1).required(),
+    testSize: Joi.number().min(0).max(1).optional(),
+    metrics: Joi.array().items(Joi.string()).optional(),
+  })
+};
+
+const assignTestSchema = {
+  body: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+    testName: Joi.string().trim().min(1).required(),
+    variant: Joi.string().valid('A', 'B').optional(),
+  })
+};
+
+const trackTestSchema = {
+  body: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+    testName: Joi.string().trim().min(1).required(),
+    event: Joi.string().trim().min(1).required(),
+    metadata: Joi.object().optional(),
+  })
+};
+
+const clearCacheSchema = {
+  body: Joi.object({
+    cacheKey: Joi.string().optional(),
+    pattern: Joi.string().optional(),
+  })
+};
+
+const batchRecommendSchema = {
+  body: Joi.object({
+    userIds: Joi.array().items(Joi.string()).min(1).max(100).required(),
+    context: Joi.object().optional(),
+    limit: Joi.number().integer().min(1).max(50).optional(),
+  })
 };
 
 /**
@@ -49,7 +128,7 @@ router.get('/health', async (req, res) => {
  * @desc Get personalized recommendations for a user
  * @access Private
  */
-router.get('/user/:userId', async (req, res) => {
+router.get('/user/:userId', validateRequestSchema(getUserRecommendationsSchema), async (req, res) => {
     try {
         const { userId } = req.params;
         const {
@@ -97,7 +176,7 @@ router.get('/user/:userId', async (req, res) => {
  * @desc Get personalized recommendations with advanced options
  * @access Private
  */
-router.post('/user/:userId', validateRequest, async (req, res) => {
+router.post('/user/:userId', validateRequestSchema(getUserRecommendationsBodySchema), async (req, res) => {
     try {
         const { userId } = req.params;
         const {
@@ -236,17 +315,10 @@ router.get('/trending', async (req, res) => {
  * @desc Update user profile with new interactions
  * @access Private
  */
-router.post('/user/:userId/profile', validateRequest, async (req, res) => {
+router.post('/user/:userId/profile', validateRequestSchema(updateProfileSchema), async (req, res) => {
     try {
         const { userId } = req.params;
         const { interactions } = req.body;
-        
-        if (!interactions || !Array.isArray(interactions)) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Interactions array is required' 
-            });
-        }
         
         const result = await RecommendationEngine.updateUserProfile(userId, interactions);
         
@@ -276,7 +348,7 @@ router.post('/user/:userId/profile', validateRequest, async (req, res) => {
  * @desc Get explanation for why a course is recommended
  * @access Private
  */
-router.get('/user/:userId/explanation/:courseId', async (req, res) => {
+router.get('/user/:userId/explanation/:courseId', validateRequestSchema(getUserRecommendationsSchema), async (req, res) => {
     try {
         const { userId, courseId } = req.params;
         
@@ -301,7 +373,7 @@ router.get('/user/:userId/explanation/:courseId', async (req, res) => {
  * @desc Track user interaction with a course
  * @access Private
  */
-router.post('/user/:userId/interaction', validateRequest, async (req, res) => {
+router.post('/user/:userId/interaction', validateRequestSchema(trackInteractionSchema), async (req, res) => {
     try {
         const { userId } = req.params;
         const {
@@ -311,13 +383,6 @@ router.post('/user/:userId/interaction', validateRequest, async (req, res) => {
             duration = null,
             metadata = {}
         } = req.body;
-        
-        if (!courseId || !interactionType) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Course ID and interaction type are required' 
-            });
-        }
         
         const interaction = {
             user_id: userId,
@@ -351,7 +416,7 @@ router.post('/user/:userId/interaction', validateRequest, async (req, res) => {
  * @desc Train recommendation models
  * @access Private
  */
-router.post('/models/train', validateRequest, async (req, res) => {
+router.post('/models/train', validateRequestSchema(trainModelSchema), async (req, res) => {
     try {
         const {
             algorithms = ['collaborative', 'content_based'],
@@ -383,7 +448,7 @@ router.post('/models/train', validateRequest, async (req, res) => {
  * @desc Evaluate model performance
  * @access Private
  */
-router.post('/models/evaluate', validateRequest, async (req, res) => {
+router.post('/models/evaluate', validateRequestSchema(evaluateModelSchema), async (req, res) => {
     try {
         const {
             algorithms = ['collaborative', 'content_based'],
@@ -462,16 +527,9 @@ router.get('/metrics', async (req, res) => {
  * @desc Assign user to A/B test group
  * @access Private
  */
-router.post('/ab-test/assign', validateRequest, async (req, res) => {
+router.post('/ab-test/assign', validateRequestSchema(assignTestSchema), async (req, res) => {
     try {
         const { userId, testName, variants } = req.body;
-        
-        if (!userId || !testName || !variants) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'User ID, test name, and variants are required' 
-            });
-        }
         
         const assignment = await ABTestingFramework.assignUserToTest(userId, testName, variants);
         
@@ -494,16 +552,9 @@ router.post('/ab-test/assign', validateRequest, async (req, res) => {
  * @desc Track A/B test event
  * @access Private
  */
-router.post('/ab-test/track', validateRequest, async (req, res) => {
+router.post('/ab-test/track', validateRequestSchema(trackTestSchema), async (req, res) => {
     try {
         const { userId, testName, event, value } = req.body;
-        
-        if (!userId || !testName || !event) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'User ID, test name, and event are required' 
-            });
-        }
         
         await ABTestingFramework.trackEvent(userId, testName, event, value);
         
@@ -551,7 +602,7 @@ router.get('/ab-test/results/:testName', async (req, res) => {
  * @desc Clear recommendation cache
  * @access Private
  */
-router.post('/cache/clear', validateRequest, async (req, res) => {
+router.post('/cache/clear', validateRequestSchema(clearCacheSchema), async (req, res) => {
     try {
         const { userId = null } = req.body;
         
@@ -658,16 +709,9 @@ router.get('/categories', (req, res) => {
  * @desc Get recommendations for multiple users
  * @access Private
  */
-router.post('/batch', validateRequest, async (req, res) => {
+router.post('/batch', validateRequestSchema(batchRecommendSchema), async (req, res) => {
     try {
         const { userIds, options = {} } = req.body;
-        
-        if (!userIds || !Array.isArray(userIds)) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'User IDs array is required' 
-            });
-        }
         
         const results = {};
         
@@ -718,7 +762,7 @@ router.post('/batch', validateRequest, async (req, res) => {
  * @desc Get user's recommendation history
  * @access Private
  */
-router.get('/user/:userId/history', async (req, res) => {
+router.get('/user/:userId/history', validateRequestSchema(getUserRecommendationsSchema), async (req, res) => {
     try {
         const { userId } = req.params;
         const { limit = 50, offset = 0 } = req.query;

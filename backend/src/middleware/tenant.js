@@ -2,7 +2,28 @@ const Tenant = require('../models/Tenant');
 const TenantUser = require('../models/TenantUser');
 
 /**
+ * Audit trail for cross-tenant access events
+ */
+const auditLog = [];
+
+function addAuditEntry(entry) {
+  const logEntry = {
+    ...entry,
+    timestamp: new Date(),
+    id: auditLog.length + 1
+  };
+  auditLog.push(logEntry);
+  console.warn('[TENANT-AUDIT]', JSON.stringify(logEntry));
+  return logEntry;
+}
+
+function getAuditLog() {
+  return auditLog;
+}
+
+/**
  * Multi-tenant middleware to identify and validate tenant from request
+ * Sets req.tenant and req.tenantId on every authenticated request.
  */
 const tenantMiddleware = async (req, res, next) => {
   try {
@@ -161,9 +182,12 @@ const ensureTenantUser = async (req, res, next) => {
       });
     }
     
+    // JWT payload uses `userId` field (not `_id`) — see tenantService.generateTokens()
+    const userId = req.user.userId || req.user._id || req.user.sub;
+    
     // Check if user belongs to current tenant
     const userTenant = await TenantUser.findOne({
-      _id: req.user._id,
+      _id: userId,
       tenantId: req.tenantId
     });
     
@@ -250,10 +274,133 @@ const tenantIsolation = (Model) => {
   };
 };
 
+/**
+ * Verifies the URL route parameter :tenantId matches the resolved req.tenantId.
+ * Prevents cross-tenant access through URL manipulation.
+ */
+const verifyTenantAccess = (paramName = 'tenantId') => {
+  return (req, res, next) => {
+    const routeTenantId = req.params[paramName];
+    
+    if (!routeTenantId) {
+      return next();
+    }
+    
+    if (!req.tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant context not established'
+      });
+    }
+    
+    if (req.tenantId.toString() !== routeTenantId) {
+      addAuditEntry({
+        type: 'CROSS_TENANT_DENIED',
+        severity: 'WARN',
+        routeParamTenantId: routeTenantId,
+        resolvedTenantId: req.tenantId.toString(),
+        userId: req.user?.userId || req.user?._id || null,
+        path: req.originalUrl,
+        method: req.method
+      });
+      
+      return res.status(403).json({
+        success: false,
+        message: 'Cross-tenant access denied',
+        code: 'CROSS_TENANT_ACCESS_DENIED'
+      });
+    }
+    
+    next();
+  };
+};
+
+/**
+ * Admin scope override middleware.
+ * Allows super_admin users to explicitly access a different tenant scope.
+ * Requires an explicit X-Admin-Override header or query parameter.
+ * Logs all such access to the audit trail.
+ */
+const adminScopeOverride = (req, res, next) => {
+  // Only applies when a super_admin is performing the request
+  if (!req.user || !req.tenantUser) {
+    return next();
+  }
+  
+  const isSuperAdmin = req.tenantUser.hasRole('super_admin');
+  if (!isSuperAdmin) {
+    return next();
+  }
+  
+  const overrideTarget = req.headers['x-admin-override'] || req.query.adminTenantId;
+  
+  if (!overrideTarget) {
+    return next();
+  }
+  
+  // Resolve the target tenant
+  Tenant.findById(overrideTarget)
+    .then(targetTenant => {
+      if (!targetTenant) {
+        return res.status(404).json({
+          success: false,
+          message: 'Admin override target tenant not found'
+        });
+      }
+      
+      // Record the override in audit log
+      addAuditEntry({
+        type: 'ADMIN_SCOPE_OVERRIDE',
+        severity: 'INFO',
+        adminUserId: req.user.userId || req.user._id,
+        originalTenantId: req.tenantId.toString(),
+        targetTenantId: targetTenant._id.toString(),
+        targetTenantName: targetTenant.name,
+        path: req.originalUrl,
+        method: req.method
+      });
+      
+      // Switch tenant context to the target tenant
+      req.tenant = targetTenant;
+      req.tenantId = targetTenant._id;
+      req.adminOverrideActive = true;
+      req.adminOriginalTenantId = req.tenantId.toString();
+      
+      res.set('X-Admin-Override', 'true');
+      res.set('X-Original-Tenant-ID', req.tenantId.toString());
+      
+      next();
+    })
+    .catch(err => {
+      console.error('Admin scope override error:', err);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to process admin override'
+      });
+    });
+};
+
+/**
+ * Wraps a MongoDB query filter object with a tenantId scope condition.
+ * Ensures queries never accidentally omit the tenant filter.
+ */
+function withTenantScope(queryFilter, tenantId) {
+  if (!tenantId) {
+    return queryFilter;
+  }
+  const filter = { ...queryFilter, tenantId };
+  return filter;
+}
+
 module.exports = {
   tenantMiddleware,
   checkResourceLimits,
   ensureTenantUser,
   requireTenantPermission,
-  tenantIsolation
+  tenantIsolation,
+  verifyTenantAccess,
+  adminScopeOverride,
+  withTenantScope,
+  getAuditLog,
+  addAuditEntry
 };

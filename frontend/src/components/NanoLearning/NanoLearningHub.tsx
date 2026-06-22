@@ -11,6 +11,7 @@ import { useNeuralInterface } from '../../hooks/useNeuralInterface';
 import { useSkillAcquisition } from '../../hooks/useSkillAcquisition';
 import { useNanotechMonitoring } from '../../hooks/useNanotechMonitoring';
 import type { Skill } from '../../types/nanotech';
+import ErrorBoundary from '../ErrorBoundary';
 
 interface NanoLearningHubProps {
   userId: string;
@@ -90,6 +91,7 @@ export function NanoLearningHub({
   const isSafetyCompromised = safety.safetyStatus && safety.safetyStatus.status !== 'safe';
 
   return (
+    <ErrorBoundary>
     <div className="w-full max-w-6xl mx-auto p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-cyan-500/20 shadow-2xl">
       {/* Header */}
       <div className="mb-8">
@@ -300,5 +302,6 @@ export function NanoLearningHub({
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 }

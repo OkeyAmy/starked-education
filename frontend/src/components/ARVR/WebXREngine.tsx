@@ -127,6 +127,146 @@ export function WebXREngine({
     trackingQuality: 'high' as const
   });
 
+  // Simulator state
+  const [rotation, setRotation] = useState({ x: 15, y: -45 });
+  const [currentGesture, setCurrentGesture] = useState<string>('open');
+  const [isAutoRotating, setIsAutoRotating] = useState(true);
+  const [showMobileDiagnostics, setShowMobileDiagnostics] = useState(false);
+
+  const isDragging = useRef(false);
+  const previousMousePosition = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    isDragging.current = true;
+    previousMousePosition.current = { x: e.clientX, y: e.clientY };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    const deltaX = e.clientX - previousMousePosition.current.x;
+    const deltaY = e.clientY - previousMousePosition.current.y;
+    setRotation(prev => ({
+      x: prev.x - deltaY * 0.5,
+      y: prev.y + deltaX * 0.5
+    }));
+    previousMousePosition.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    isDragging.current = false;
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+  };
+
+  // Auto rotation effect
+  useEffect(() => {
+    if (!isAutoRotating) return;
+    let frameId: number;
+    const rotate = () => {
+      if (!isDragging.current) {
+        setRotation(prev => ({ ...prev, y: (prev.y + 0.2) % 360 }));
+      }
+      frameId = requestAnimationFrame(rotate);
+    };
+    frameId = requestAnimationFrame(rotate);
+    return () => cancelAnimationFrame(frameId);
+  }, [isAutoRotating]);
+
+  // Simulator mock update loop
+  useEffect(() => {
+    if (typeof window === 'undefined' || !currentSession || currentSession.state !== 'active') {
+      return;
+    }
+    // Only run if navigator.xr is not present/active (simulated mode)
+    if (typeof navigator !== 'undefined' && navigator.xr && currentSession.id && !currentSession.id.startsWith('xr-mock-')) {
+      return;
+    }
+
+    let frameId: number;
+    const loop = (time: DOMHighResTimeStamp) => {
+      setPerformanceStats({
+        frameRate: Math.round(58 + Math.sin(time * 0.005) * 3),
+        latency: Math.round(11 + Math.cos(time * 0.003) * 2),
+        drawCalls: 142,
+        triangles: 38400,
+        memoryUsage: Math.round(41.2 + Math.sin(time * 0.001) * 1.5),
+        trackingQuality: 'high'
+      });
+
+      if (currentSession.device.capabilities.controllers) {
+        setControllers([
+          {
+            id: 'mock-left',
+            hand: 'left',
+            position: {
+              x: -0.25 + Math.sin(time * 0.002) * 0.05,
+              y: 1.05 + Math.cos(time * 0.003) * 0.05,
+              z: -0.4 + Math.sin(time * 0.001) * 0.05
+            },
+            rotation: {
+              x: Math.sin(time * 0.001) * 10,
+              y: Math.cos(time * 0.002) * 10,
+              z: 0
+            },
+            buttons: [false, false, false],
+            axes: [0, 0],
+            tracking: true,
+            visible: true
+          },
+          {
+            id: 'mock-right',
+            hand: 'right',
+            position: {
+              x: 0.25 + Math.cos(time * 0.002) * 0.05,
+              y: 1.05 + Math.sin(time * 0.003) * 0.05,
+              z: -0.4 + Math.cos(time * 0.001) * 0.05
+            },
+            rotation: {
+              x: Math.cos(time * 0.001) * 10,
+              y: Math.sin(time * 0.002) * 10,
+              z: 0
+            },
+            buttons: [false, false, false],
+            axes: [0, 0],
+            tracking: true,
+            visible: true
+          }
+        ]);
+      } else {
+        setControllers([]);
+      }
+
+      if (currentSession.device.capabilities.handTracking) {
+        setHands([
+          {
+            id: 'mock-hand-left',
+            hand: 'left',
+            position: { x: -0.2, y: 0.95, z: -0.3 },
+            rotation: { x: 0, y: 0, z: 0 },
+            joints: {
+              wrist: { x: -0.2, y: 0.95, z: -0.3 },
+              thumb: { x: -0.21, y: 0.96, z: -0.29 },
+              index: { x: -0.2, y: 0.99, z: -0.28 },
+              middle: { x: -0.19, y: 1.0, z: -0.28 },
+              ring: { x: -0.18, y: 0.99, z: -0.29 },
+              pinky: { x: -0.17, y: 0.98, z: -0.3 }
+            },
+            tracking: true,
+            gesture: currentGesture,
+            confidence: 0.96
+          }
+        ]);
+      } else {
+        setHands([]);
+      }
+
+      frameId = requestAnimationFrame(loop);
+    };
+
+    frameId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frameId);
+  }, [currentSession, currentGesture]);
+
   const xrSessionRef = useRef<any>(null);
   const xrFrameRef = useRef<any>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -143,8 +283,39 @@ export function WebXREngine({
   const initializeWebXR = async () => {
     try {
       // Check WebXR support
-      if (!navigator.xr) {
-        console.error('WebXR not supported');
+      if (typeof window !== 'undefined' && !navigator.xr) {
+        console.warn('WebXR not supported. Fallback to 3D Screen Simulator Mode.');
+        const mockDevices: XRDevice[] = [
+          {
+            id: 'sim-vr-headset',
+            name: 'Simulator VR Headset',
+            type: 'vr',
+            capabilities: {
+              handTracking: true,
+              spatialTracking: true,
+              eyeTracking: true,
+              controllers: true,
+              passthrough: true
+            },
+            supported: true
+          },
+          {
+            id: 'sim-ar-glasses',
+            name: 'Simulator AR Glasses',
+            type: 'ar',
+            capabilities: {
+              handTracking: true,
+              spatialTracking: true,
+              eyeTracking: false,
+              controllers: false,
+              passthrough: true
+            },
+            supported: true
+          }
+        ];
+        setAvailableDevices(mockDevices);
+        setXrSupported(true); // Treat simulator as "supported" to show the full dashboard!
+        setIsInitialized(true);
         return;
       }
 
@@ -265,10 +436,6 @@ export function WebXREngine({
   // Start XR session
   const startXRSession = useCallback(async (mode: XRMode, deviceId?: string) => {
     try {
-      if (!navigator.xr) {
-        throw new Error('WebXR not supported');
-      }
-
       // Find device
       const device = deviceId 
         ? availableDevices.find(d => d.id === deviceId && d.type === mode)
@@ -276,6 +443,24 @@ export function WebXREngine({
 
       if (!device) {
         throw new Error(`No supported device found for ${mode} mode`);
+      }
+
+      if (typeof window !== 'undefined' && !navigator.xr) {
+        const xrSessionInfo: XRSessionInfo = {
+          id: `xr-mock-${Date.now()}`,
+          mode,
+          state: 'active',
+          device,
+          startTime: Date.now(),
+          frameRate: 60,
+          latency: 12,
+          trackingQuality: 'high'
+        };
+
+        setCurrentSession(xrSessionInfo);
+        onSessionStart?.(xrSessionInfo);
+        console.log(`Mock XR session started in ${mode} mode`);
+        return;
       }
 
       // Map internal mode to WebXR session mode
@@ -493,6 +678,20 @@ export function WebXREngine({
 
   // End XR session
   const endXRSession = useCallback(async () => {
+    if (typeof window !== 'undefined' && !navigator.xr) {
+      const session = currentSession;
+      if (session) {
+        const endedSession = { ...session, state: 'ending' };
+        setCurrentSession(endedSession);
+        onSessionEnd?.(endedSession);
+      }
+      setCurrentSession(null);
+      setControllers([]);
+      setHands([]);
+      console.log('Mock XR session ended');
+      return;
+    }
+
     if (!xrSessionRef.current) return;
 
     try {
@@ -568,17 +767,125 @@ export function WebXREngine({
             Your browser or device doesn't support WebXR
           </p>
         </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="relative w-full h-full bg-black rounded-lg overflow-hidden">
+    <div className="relative w-full h-full bg-black rounded-lg overflow-hidden min-h-[500px]">
+      {/* Interactive 3D Globe / Simulator Fallback View */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+        {currentSession?.state === 'active' ? (
+          <div className="flex flex-col items-center justify-center w-full h-full pt-44 pb-16 sm:py-0">
+            {/* Draggable Globe Container */}
+            <div
+              className="relative w-40 h-40 sm:w-60 sm:h-60 flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
+              style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+            >
+              <div
+                className="w-full h-full relative flex items-center justify-center transition-transform duration-75"
+                style={{
+                  transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+                  transformStyle: 'preserve-3d',
+                }}
+              >
+                {/* 3D Wireframe Rings */}
+                <div className="absolute w-full h-full rounded-full border border-blue-500/40 animate-pulse" style={{ transform: 'rotateY(0deg)' }} />
+                <div className="absolute w-full h-full rounded-full border border-blue-500/30" style={{ transform: 'rotateY(45deg)' }} />
+                <div className="absolute w-full h-full rounded-full border border-blue-500/30" style={{ transform: 'rotateY(90deg)' }} />
+                <div className="absolute w-full h-full rounded-full border border-blue-500/30" style={{ transform: 'rotateY(135deg)' }} />
+                <div className="absolute w-full h-full rounded-full border border-blue-500/40" style={{ transform: 'rotateX(90deg)' }} />
+                
+                {/* Equator & Latitudes */}
+                <div className="absolute w-[86.6%] h-[86.6%] rounded-full border border-blue-500/20" style={{ transform: 'translateZ(20px) rotateX(90deg)' }} />
+                <div className="absolute w-[86.6%] h-[86.6%] rounded-full border border-blue-500/20" style={{ transform: 'translateZ(-20px) rotateX(90deg)' }} />
+                
+                {/* Core */}
+                <div className="absolute w-6 h-6 rounded-full bg-blue-600/50 blur-sm" />
+                <div className="absolute w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,1)]" />
+
+                {/* Floating Orbits / Simulated Controller Spheres */}
+                {controllers.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`absolute w-3 h-3 rounded-full ${c.hand === 'left' ? 'bg-cyan-500' : 'bg-fuchsia-500'} shadow-[0_0_8px_rgba(255,255,255,0.6)]`}
+                    style={{
+                      transform: `translate3d(${c.position.x * 120}px, ${c.position.y * -80 + 80}px, ${c.position.z * 120}px)`
+                    }}
+                  />
+                ))}
+
+                {/* Floating Hand Joint Representation */}
+                {hands.map((h) => (
+                  <div
+                    key={h.id}
+                    className="absolute w-2.5 h-2.5 rounded-full bg-green-400"
+                    style={{
+                      transform: `translate3d(${h.position.x * 120}px, ${h.position.y * -80 + 80}px, ${h.position.z * 120}px)`
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Instruction tooltip */}
+            <p className="mt-4 text-[11px] text-slate-400 text-center select-none pointer-events-none">
+              Drag to orbit • Simulated controllers & hands tracking active
+            </p>
+          </div>
+        ) : (
+          <div className="text-center pt-28 sm:pt-0">
+            <Monitor className="h-12 w-12 text-gray-500 mx-auto mb-3 animate-pulse" />
+            <h3 className="text-white text-lg font-semibold mb-1">
+              WebXR 3D Simulator Fallback
+            </h3>
+            <p className="text-gray-400 text-xs max-w-xs mx-auto mb-4 px-4">
+              Your device does not support WebXR natively. Start the Simulator Mode to experience the environment.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center px-4">
+              <button
+                onClick={() => startXRSession('vr')}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors min-h-[44px] flex items-center justify-center gap-1.5"
+              >
+                <Glasses className="h-4 w-4" />
+                Start VR Simulator
+              </button>
+              <button
+                onClick={() => startXRSession('ar')}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors min-h-[44px] flex items-center justify-center gap-1.5"
+              >
+                <Camera className="h-4 w-4" />
+                Start AR Simulator
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* XR Status Display */}
-      <div className="absolute top-4 left-4 bg-black/80 backdrop-blur-md rounded-lg p-4 border border-blue-500/30">
-        <div className="flex items-center gap-3 mb-4">
-          <Globe className="h-5 w-5 text-blue-400" />
-          <h3 className="text-white font-semibold">WebXR Engine</h3>
+      <div className="absolute top-4 left-4 right-4 sm:right-auto sm:w-80 bg-black/80 backdrop-blur-md rounded-xl p-4 border border-blue-500/30 z-20 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Globe className="h-5 w-5 text-blue-400" />
+            <h3 className="text-white font-semibold flex items-center gap-1.5">
+              WebXR Engine
+              {(!navigator.xr) && (
+                <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 font-bold uppercase tracking-wider">
+                  Sim
+                </span>
+              )}
+            </h3>
+          </div>
+          {/* Mobile Diagnostics Toggle */}
+          {currentSession?.state === 'active' && (
+            <button
+              onClick={() => setShowMobileDiagnostics(!showMobileDiagnostics)}
+              className="sm:hidden p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors"
+              title="Toggle Diagnostics"
+              aria-label="Toggle Diagnostics"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Session Status */}
@@ -598,19 +905,19 @@ export function WebXREngine({
             <>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-gray-400 text-sm">Mode:</span>
-                <span className="text-blue-400 text-sm capitalize">
+                <span className="text-blue-400 text-sm capitalize font-semibold">
                   {currentSession.mode}
                 </span>
               </div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-gray-400 text-sm">Device:</span>
-                <span className="text-purple-400 text-sm">
+                <span className="text-purple-400 text-sm font-medium truncate max-w-[150px]" title={currentSession.device.name}>
                   {currentSession.device.name}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-400 text-sm">Runtime:</span>
-                <span className="text-green-400 text-sm">
+                <span className="text-green-400 text-sm font-mono">
                   {Math.floor((Date.now() - currentSession.startTime) / 1000)}s
                 </span>
               </div>
@@ -619,52 +926,73 @@ export function WebXREngine({
         </div>
 
         {/* Available Devices */}
-        <div className="mb-4">
-          <h4 className="text-white text-sm font-medium mb-2">Available Devices</h4>
-          <div className="space-y-2">
-            {availableDevices.map((device) => {
-              const IconComponent = getDeviceIcon(device);
-              return (
-                <div
-                  key={device.id}
-                  className={`flex items-center gap-3 p-2 rounded ${
-                    device.supported 
-                      ? 'bg-green-900/20 border border-green-500/30' 
-                      : 'bg-gray-900/20 border border-gray-500/30 opacity-50'
+        {!currentSession && (
+          <div className="mb-4">
+            <h4 className="text-white text-sm font-medium mb-2">Available Devices</h4>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {availableDevices.map((device) => {
+                const IconComponent = getDeviceIcon(device);
+                return (
+                  <div
+                    key={device.id}
+                    className={`flex items-center gap-3 p-2 rounded ${
+                      device.supported 
+                        ? 'bg-green-900/20 border border-green-500/30' 
+                        : 'bg-gray-900/20 border border-gray-500/30 opacity-50'
+                    }`}
+                  >
+                    <IconComponent className={`h-4 w-4 ${getDeviceColor(device)}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white text-sm font-medium truncate">
+                        {device.name}
+                      </div>
+                      <div className="text-gray-400 text-xs capitalize">
+                        {device.type}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      {device.capabilities.handTracking && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full" title="Hand Tracking" />
+                      )}
+                      {device.capabilities.controllers && (
+                        <div className="w-2 h-2 bg-green-500 rounded-full" title="Controllers" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Simulator Hand Gesture Mock Controls */}
+        {(!navigator.xr) && currentSession?.state === 'active' && currentSession.device.capabilities.handTracking && (
+          <div className="mt-4 pt-4 border-t border-slate-700/50">
+            <h4 className="text-white text-xs font-semibold uppercase tracking-wider mb-2">Simulate Hand Gesture</h4>
+            <div className="grid grid-cols-3 gap-2">
+              {['open', 'pinch', 'fist'].map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setCurrentGesture(g)}
+                  className={`px-2 py-1.5 rounded text-xs capitalize font-medium transition-colors min-h-[44px] flex items-center justify-center ${
+                    currentGesture === g
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                   }`}
                 >
-                  <IconComponent className={`h-4 w-4 ${getDeviceColor(device)}`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white text-sm font-medium truncate">
-                      {device.name}
-                    </div>
-                    <div className="text-gray-400 text-xs capitalize">
-                      {device.type}
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    {device.capabilities.handTracking && (
-                      <div className="w-2 h-2 bg-blue-500 rounded-full" title="Hand Tracking" />
-                    )}
-                    {device.capabilities.controllers && (
-                      <div className="w-2 h-2 bg-green-500 rounded-full" title="Controllers" />
-                    )}
-                    {device.capabilities.eyeTracking && (
-                      <div className="w-2 h-2 bg-purple-500 rounded-full" title="Eye Tracking" />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                  {g}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Session Controls */}
-        <div className="space-y-2">
+        <div className="space-y-2 mt-4">
           {currentSession?.state === 'active' ? (
             <button
               onClick={endXRSession}
-              className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center justify-center gap-2 min-h-[44px]"
             >
               <Pause className="h-4 w-4" />
               End Session
@@ -674,7 +1002,7 @@ export function WebXREngine({
               {(enableVR && availableDevices.some(d => d.type === 'vr' && d.supported)) && (
                 <button
                   onClick={() => startXRSession('vr')}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   <Glasses className="h-4 w-4" />
                   Start VR
@@ -684,7 +1012,7 @@ export function WebXREngine({
               {(enableAR && availableDevices.some(d => d.type === 'ar' && d.supported)) && (
                 <button
                   onClick={() => startXRSession('ar')}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   <Camera className="h-4 w-4" />
                   Start AR
@@ -697,7 +1025,9 @@ export function WebXREngine({
 
       {/* Performance Stats */}
       {showDebugInfo && currentSession?.state === 'active' && (
-        <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md rounded-lg p-4 border border-green-500/30">
+        <div className={`absolute bg-black/80 backdrop-blur-md rounded-lg p-4 border border-green-500/30 z-10 ${
+          showMobileDiagnostics ? 'block top-72 left-4 right-4 sm:left-auto sm:top-4 sm:right-4' : 'hidden sm:block sm:top-4 sm:right-4'
+        }`}>
           <div className="flex items-center gap-3 mb-4">
             <Eye className="h-5 w-5 text-green-400" />
             <h3 className="text-white font-semibold">Performance</h3>
@@ -738,7 +1068,9 @@ export function WebXREngine({
 
       {/* Controller Visualization */}
       {showDebugInfo && controllers.length > 0 && currentSession?.state === 'active' && (
-        <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-md rounded-lg p-4 border border-blue-500/30">
+        <div className={`absolute bg-black/80 backdrop-blur-md rounded-lg p-4 border border-blue-500/30 z-10 ${
+          showMobileDiagnostics ? 'block top-[480px] left-4 right-4 sm:left-auto sm:bottom-4 sm:left-4' : 'hidden sm:block sm:bottom-4 sm:left-4'
+        }`}>
           <div className="flex items-center gap-3 mb-4">
             <Hand className="h-5 w-5 text-blue-400" />
             <h3 className="text-white font-semibold">Controllers</h3>
@@ -751,7 +1083,7 @@ export function WebXREngine({
                   controller.visible ? 'bg-green-500' : 'bg-gray-500'
                 }`} />
                 <span className="text-white capitalize">{controller.hand}</span>
-                <span className="text-gray-400">
+                <span className="text-gray-400 font-mono">
                   ({controller.position.x.toFixed(2)}, {controller.position.y.toFixed(2)}, {controller.position.z.toFixed(2)})
                 </span>
               </div>
@@ -762,7 +1094,9 @@ export function WebXREngine({
 
       {/* Hand Tracking Visualization */}
       {showDebugInfo && hands.length > 0 && currentSession?.state === 'active' && (
-        <div className="absolute bottom-4 right-4 bg-black/80 backdrop-blur-md rounded-lg p-4 border border-green-500/30">
+        <div className={`absolute bg-black/80 backdrop-blur-md rounded-lg p-4 border border-green-500/30 z-10 ${
+          showMobileDiagnostics ? 'block top-[600px] left-4 right-4 sm:left-auto sm:bottom-4 sm:right-4' : 'hidden sm:block sm:bottom-4 sm:right-4'
+        }`}>
           <div className="flex items-center gap-3 mb-4">
             <Hand className="h-5 w-5 text-green-400" />
             <h3 className="text-white font-semibold">Hand Tracking</h3>
@@ -782,39 +1116,6 @@ export function WebXREngine({
           </div>
         </div>
       )}
-
-      {/* XR Scene Placeholder */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center">
-          {currentSession?.state === 'active' ? (
-            <>
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="mb-4"
-              >
-                <Globe className="h-16 w-16 text-blue-400" />
-              </motion.div>
-              <h3 className="text-white text-xl font-semibold mb-2">
-                {currentSession.mode.toUpperCase()} Session Active
-              </h3>
-              <p className="text-gray-400 text-sm">
-                {currentSession.device.name}
-              </p>
-            </>
-          ) : (
-            <>
-              <Monitor className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-white text-xl font-semibold mb-2">
-                WebXR Ready
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Select a device to start
-              </p>
-            </>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

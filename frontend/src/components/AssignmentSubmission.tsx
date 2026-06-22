@@ -4,13 +4,13 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
-import { 
-  Upload, 
-  FileText, 
-  Code, 
-  Video, 
-  Music, 
-  Clock, 
+import {
+  Upload,
+  FileText,
+  Code,
+  Video,
+  Music,
+  Clock,
   AlertCircle,
   CheckCircle,
   Save,
@@ -19,6 +19,11 @@ import {
   File
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import {
+  assignmentTextSchema,
+  assignmentCodeSchema,
+  validateFile as validateFileMeta,
+} from '@/lib/schemas';
 
 interface Assignment {
   id: string;
@@ -71,6 +76,9 @@ export default function AssignmentSubmission({
   const [isSaving, setIsSaving] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>(existingSubmission?.files || []);
   const [dragActive, setDragActive] = useState(false);
+  // Inline form errors. Shape is keyed by submissionType + field when useful.
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fileErrors, setFileErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLate = new Date() > new Date(assignment.dueDate);
@@ -91,25 +99,40 @@ export default function AssignmentSubmission({
     if (!files) return;
 
     const newFiles: UploadedFile[] = [];
+    const nextFileErrors: Record<string, string> = { ...fileErrors };
     const maxSize = assignment.maxFileSize ? assignment.maxFileSize * 1024 * 1024 : 100 * 1024 * 1024; // Default 100MB
     const maxFiles = assignment.maxFiles || 10;
 
     Array.from(files).forEach((file) => {
       if (uploadedFiles.length + newFiles.length >= maxFiles) {
-        toast.error(`Maximum ${maxFiles} files allowed`);
+        const msg = `Maximum ${maxFiles} files allowed`;
+        toast.error(msg);
+        nextFileErrors[file.name] = msg;
         return;
       }
 
+      // Schema-level validation (size + mime type). We additionally enforce
+      // the caller's `maxSize` override and `allowedFileTypes` extension
+      // list because `fileMetaSchema` doesn't see component props.
+      const schemaResult = validateFileMeta(file);
+      if (!schemaResult.valid) {
+        toast.error(`${file.name}: ${schemaResult.error}`);
+        nextFileErrors[file.name] = schemaResult.error;
+        return;
+      }
       if (file.size > maxSize) {
-        toast.error(`File ${file.name} exceeds maximum size limit`);
+        const msg = `File ${file.name} exceeds maximum size limit`;
+        toast.error(msg);
+        nextFileErrors[file.name] = msg;
         return;
       }
 
-      // Check file type if restrictions exist
       if (assignment.allowedFileTypes && assignment.allowedFileTypes.length > 0) {
         const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
         if (!assignment.allowedFileTypes.includes(fileExtension)) {
-          toast.error(`File type ${fileExtension} is not allowed`);
+          const msg = `File type ${fileExtension} is not allowed`;
+          toast.error(msg);
+          nextFileErrors[file.name] = msg;
           return;
         }
       }
@@ -124,7 +147,14 @@ export default function AssignmentSubmission({
     });
 
     setUploadedFiles(prev => [...prev, ...newFiles]);
-  }, [uploadedFiles, assignment.maxFileSize, assignment.maxFiles, assignment.allowedFileTypes]);
+    setFileErrors(nextFileErrors);
+  }, [
+    uploadedFiles,
+    fileErrors,
+    assignment.maxFileSize,
+    assignment.maxFiles,
+    assignment.allowedFileTypes,
+  ]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -152,26 +182,46 @@ export default function AssignmentSubmission({
 
   const handleSubmit = async () => {
     if (!canSubmit) {
+      setFormError('Submission is not allowed');
       toast.error('Submission is not allowed');
       return;
     }
 
-    // Validate submission based on assignment requirements
-    if (assignment.submissionTypes.includes('text') && !submissionData.textContent.trim()) {
-      toast.error('Text content is required');
-      return;
+    // Text-only / text-bearing assignments: use Zod schema. The same
+    // schema is also enforced server-side (or will be), so client- and
+    // server-side copies can't drift apart.
+    if (assignment.submissionTypes.includes('text')) {
+      const result = assignmentTextSchema.safeParse(submissionData);
+      if (!result.success) {
+        const msg = result.error.issues[0]?.message ?? 'Text content is required';
+        setFormError(msg);
+        toast.error(msg);
+        return;
+      }
     }
 
+    if (assignment.submissionTypes.includes('code')) {
+      const result = assignmentCodeSchema.safeParse(submissionData.codeSubmission);
+      if (!result.success) {
+        const msg = result.error.issues[0]?.message ?? 'Code submission is required';
+        setFormError(msg);
+        toast.error(msg);
+        return;
+      }
+    }
+
+    // File count remains a domain-level check (the Zod `fileMetaSchema`
+    // validates *each* file but doesn't know "at least one"). File-level
+    // metadata errors already surfaced inline via `setFileErrors`
+    // during upload; here we gate on the count.
     if (assignment.submissionTypes.includes('file') && uploadedFiles.length === 0) {
-      toast.error('At least one file must be uploaded');
+      const msg = 'At least one file must be uploaded';
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
 
-    if (assignment.submissionTypes.includes('code') && !submissionData.codeSubmission.code.trim()) {
-      toast.error('Code submission is required');
-      return;
-    }
-
+    setFormError(null);
     setIsSubmitting(true);
     try {
       const submissionPayload = {
@@ -182,7 +232,9 @@ export default function AssignmentSubmission({
       await onSubmit(submissionPayload);
       toast.success('Assignment submitted successfully!');
     } catch (error) {
-      toast.error('Failed to submit assignment');
+      const msg = 'Failed to submit assignment';
+      setFormError(msg);
+      toast.error(msg);
       console.error('Submission error:', error);
     } finally {
       setIsSubmitting(false);
@@ -394,6 +446,18 @@ export default function AssignmentSubmission({
               This assignment is late. {assignment.latePolicy && 'A late penalty may be applied.'}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Top-level form error banner so screen readers pick up the news. */}
+      {formError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3"
+        >
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <p className="text-sm text-red-800">{formError}</p>
         </div>
       )}
 

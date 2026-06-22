@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Upload, X, File, Image, Video, Music, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import ipfsClient, { IpfsUploadOptions, IpfsUploadResult, UploadProgress } from '../lib/ipfs';
+import { validateFile as validateFileMeta } from '../lib/schemas';
 
 interface ContentUploaderProps {
   onUploadComplete?: (result: IpfsUploadResult) => void;
@@ -80,13 +81,21 @@ const ContentUploader: React.FC<ContentUploaderProps> = ({
     });
   };
 
-  // Validate file
+  // Validate file. The component's `acceptedTypes` and `maxSize` props
+  // are the source of truth, so we honour them first and only fall back
+  // to the shared Zod `fileMetaSchema` for files that fall in the default
+  // constructor-arg accepted list. This preserves the original behaviour
+  // where caller's `acceptedTypes` overrides always win.
   const validateFile = (file: File): string | null => {
     if (!acceptedTypes.includes(file.type)) {
       return 'File type not supported';
     }
     if (file.size > maxSize) {
       return `File size exceeds ${Math.round(maxSize / 1024 / 1024)}MB limit`;
+    }
+    if (file.size === 0) {
+      const schemaResult = validateFileMeta(file);
+      if (!schemaResult.valid) return schemaResult.error;
     }
     return null;
   };

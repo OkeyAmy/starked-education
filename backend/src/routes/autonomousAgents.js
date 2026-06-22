@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const AutonomousAgentController = require('../services/autonomousAgents/AutonomousAgentController');
 const logger = require('../utils/logger');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
 
 // Initialize controller
 let agentController;
@@ -18,6 +20,22 @@ try {
 } catch (error) {
   logger.error('Failed to initialize autonomous agent controller:', error);
 }
+
+const supportTicketSchema = {
+  body: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+    title: Joi.string().trim().min(1).max(200).required(),
+    description: Joi.string().trim().min(1).max(5000).required(),
+    priority: Joi.string().valid('low', 'normal', 'high', 'urgent').optional(),
+    category: Joi.string().valid('technical', 'billing', 'academic', 'account', 'general').optional(),
+  })
+};
+
+const oversightSchema = {
+  body: Joi.object({
+    enabled: Joi.boolean().required(),
+  })
+};
 
 /**
  * @route GET /api/autonomous-agents/status
@@ -44,16 +62,9 @@ router.get('/status', async (req, res) => {
  * @route POST /api/autonomous-agents/support/ticket
  * @desc Submit support ticket for autonomous handling
  */
-router.post('/support/ticket', async (req, res) => {
+router.post('/support/ticket', validateRequestSchema(supportTicketSchema), async (req, res) => {
   try {
     const { userId, title, description, priority, category } = req.body;
-
-    if (!userId || !title || !description) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: userId, title, description'
-      });
-    }
 
     const ticket = {
       id: `ticket_${Date.now()}`,
@@ -133,16 +144,9 @@ router.get('/security/status', async (req, res) => {
  * @route PUT /api/autonomous-agents/oversight
  * @desc Enable/disable human oversight
  */
-router.put('/oversight', async (req, res) => {
+router.put('/oversight', validateRequestSchema(oversightSchema), async (req, res) => {
   try {
     const { enabled } = req.body;
-
-    if (typeof enabled !== 'boolean') {
-      return res.status(400).json({
-        success: false,
-        error: 'enabled must be a boolean'
-      });
-    }
 
     agentController.setHumanOversight(enabled);
 

@@ -21,10 +21,6 @@ export default function RootLayout({
   children: React.ReactNode;
   params?: { locale?: string };
 }) {
-  if (typeof window !== 'undefined') {
-    performanceMonitor;
-  }
-
   const locale = params?.locale ?? 'en';
   const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
 

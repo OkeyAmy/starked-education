@@ -44,7 +44,10 @@ pub struct PackedTimestamps {
 
 impl PackedTimestamps {
     pub fn new(created_at: u64, updated_at: u64) -> Self {
-        Self { created_at, updated_at }
+        Self {
+            created_at,
+            updated_at,
+        }
     }
 
     pub fn created_at(&self) -> u64 {

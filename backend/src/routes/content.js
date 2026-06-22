@@ -6,7 +6,9 @@ const { requirePermission } = require('../middleware/rbac');
 const { PERMISSIONS } = require('../utils/roles');
 const { ipfsAuth, optionalIpfsAuth, validateContentAccess, validateFileSize } = require('../middleware/ipfsAuth');
 const { createIpfsError } = require('../utils/ipfsUtils');
-const { ipfsLimiter } = require('../middleware/rateLimiter');
+const { contentWriteLimiter, readLimiter } = require('../middleware/rateLimiter');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -22,16 +24,25 @@ const upload = multer({
   }
 });
 
+const uploadContentSchema = {
+  body: Joi.object({
+    metadata: Joi.string().optional(),
+    includeMetadata: Joi.string().valid('true', 'false').optional(),
+    wrapWithDirectory: Joi.string().valid('true', 'false').optional(),
+  })
+};
+
 /**
  * Upload a single file to IPFS
  * POST /api/content/upload
  */
 router.post('/upload', 
+  contentWriteLimiter,
   requirePermission(PERMISSIONS.CONTENT_CREATE),
-  ipfsLimiter,
   ipfsAuth('upload'),
   upload.single('file'),
   validateFileSize,
+  validateRequestSchema(uploadContentSchema),
   async (req, res) => {
     try {
       if (!req.file) {
@@ -90,11 +101,12 @@ router.post('/upload',
  * POST /api/content/upload/batch
  */
 router.post('/upload/batch',
+  contentWriteLimiter,
   requirePermission(PERMISSIONS.CONTENT_CREATE),
-  ipfsLimiter,
   ipfsAuth('upload'),
   upload.array('files', 10),
   validateFileSize,
+  validateRequestSchema(uploadContentSchema),
   async (req, res) => {
     try {
       if (!req.files || req.files.length === 0) {
@@ -158,6 +170,7 @@ router.post('/upload/batch',
  * GET /api/content/:cid
  */
 router.get('/:cid',
+  readLimiter,
   requirePermission(PERMISSIONS.CONTENT_READ),
   validateContentAccess,
   async (req, res) => {
@@ -215,6 +228,7 @@ router.get('/:cid',
  * GET /api/content/:cid/metadata
  */
 router.get('/:cid/metadata',
+  readLimiter,
   requirePermission(PERMISSIONS.CONTENT_READ),
   validateContentAccess,
   async (req, res) => {
@@ -262,6 +276,7 @@ router.get('/:cid/metadata',
  * POST /api/content/:cid/pin
  */
 router.post('/:cid/pin',
+  contentWriteLimiter,
   requirePermission(PERMISSIONS.COURSE_UPDATE), // Pinning requires course update permission
   validateContentAccess,
   async (req, res) => {
@@ -301,6 +316,7 @@ router.post('/:cid/pin',
  * DELETE /api/content/:cid/pin
  */
 router.delete('/:cid/pin',
+  contentWriteLimiter,
   requirePermission(PERMISSIONS.COURSE_UPDATE),
   validateContentAccess,
   async (req, res) => {
@@ -340,6 +356,7 @@ router.delete('/:cid/pin',
  * GET /api/content/node/info
  */
 router.get('/node/info',
+  readLimiter,
   requirePermission(PERMISSIONS.SYSTEM_MANAGE),
   async (req, res) => {
     try {
@@ -375,6 +392,7 @@ router.get('/node/info',
  * GET /api/content/cache/stats
  */
 router.get('/cache/stats',
+  readLimiter,
   requirePermission(PERMISSIONS.ANALYTICS_READ),
   async (req, res) => {
     try {
@@ -401,6 +419,7 @@ router.get('/cache/stats',
  * DELETE /api/content/cache
  */
 router.delete('/cache',
+  contentWriteLimiter,
   requirePermission(PERMISSIONS.SYSTEM_MANAGE),
   async (req, res) => {
     try {
@@ -427,6 +446,7 @@ router.delete('/cache',
  * GET /api/content/health
  */
 router.get('/health',
+  readLimiter,
   async (req, res) => {
     try {
       const nodeInfo = await ipfsService.getNodeInfo();

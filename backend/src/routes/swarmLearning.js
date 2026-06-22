@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const SwarmLearningController = require('../controllers/swarmLearningController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
 const rateLimit = require('express-rate-limit');
 
 // Initialize controller
@@ -24,21 +26,81 @@ const agentOperationLimit = rateLimit({
   }
 });
 
+// Validation schemas
+const initializeSchema = {
+  body: Joi.object({
+    modelType: Joi.string().trim().min(1).max(100).required(),
+    swarmSize: Joi.number().integer().min(2).max(1000).required(),
+    consensusProtocol: Joi.string().valid('gossip', 'all_reduce', 'ring', 'tree').optional(),
+    topology: Joi.string().valid('mesh', 'star', 'ring', 'random').optional(),
+  })
+};
+
+const shutdownSchema = {
+  body: Joi.object({
+    reason: Joi.string().max(500).optional(),
+  })
+};
+
+const createSwarmSchema = {
+  body: Joi.object({
+    name: Joi.string().trim().min(1).max(200).required(),
+    taskType: Joi.string().trim().min(1).required(),
+    config: Joi.object({
+      minParticipants: Joi.number().integer().min(1).optional(),
+      maxParticipants: Joi.number().integer().min(1).optional(),
+      learningRate: Joi.number().positive().optional(),
+    }).optional(),
+  })
+};
+
+const startTaskSchema = {
+  params: Joi.object({
+    taskId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    participants: Joi.array().items(Joi.string()).min(1).optional(),
+    parameters: Joi.object().optional(),
+  })
+};
+
+const registerAgentSchema = {
+  body: Joi.object({
+    swarmId: Joi.string().trim().min(1).required(),
+    agentId: Joi.string().trim().min(1).required(),
+    endpoint: Joi.string().uri().optional(),
+    capabilities: Joi.object().optional(),
+  })
+};
+
+const acknowledgeAlertSchema = {
+  params: Joi.object({
+    alertId: Joi.string().trim().min(1).required(),
+  })
+};
+
+const updateConfigSchema = {
+  body: Joi.object({
+    key: Joi.string().trim().min(1).required(),
+    value: Joi.any().required(),
+  })
+};
+
 // System Management Routes
-router.post('/initialize', authenticateToken, requireAdmin, sensitiveOperationLimit, async (req, res) => {
+router.post('/initialize', authenticateToken, requireAdmin, sensitiveOperationLimit, validateRequestSchema(initializeSchema), async (req, res) => {
   await swarmController.initialize(req, res);
 });
 
-router.post('/shutdown', authenticateToken, requireAdmin, sensitiveOperationLimit, async (req, res) => {
+router.post('/shutdown', authenticateToken, requireAdmin, sensitiveOperationLimit, validateRequestSchema(shutdownSchema), async (req, res) => {
   await swarmController.shutdown(req, res);
 });
 
 // Swarm Management Routes
-router.post('/swarms', authenticateToken, async (req, res) => {
+router.post('/swarms', authenticateToken, validateRequestSchema(createSwarmSchema), async (req, res) => {
   await swarmController.createSwarm(req, res);
 });
 
-router.post('/swarms/:taskId/start', authenticateToken, async (req, res) => {
+router.post('/swarms/:taskId/start', authenticateToken, validateRequestSchema(startTaskSchema), async (req, res) => {
   await swarmController.startSwarmLearning(req, res);
 });
 
@@ -47,7 +109,7 @@ router.get('/swarms/status', authenticateToken, async (req, res) => {
 });
 
 // Agent Management Routes
-router.post('/agents', authenticateToken, agentOperationLimit, async (req, res) => {
+router.post('/agents', authenticateToken, agentOperationLimit, validateRequestSchema(registerAgentSchema), async (req, res) => {
   await swarmController.registerAgent(req, res);
 });
 
@@ -83,12 +145,12 @@ router.get('/alerts', authenticateToken, async (req, res) => {
   await swarmController.getAlerts(req, res);
 });
 
-router.post('/alerts/:alertId/acknowledge', authenticateToken, async (req, res) => {
+router.post('/alerts/:alertId/acknowledge', authenticateToken, validateRequestSchema(acknowledgeAlertSchema), async (req, res) => {
   await swarmController.acknowledgeAlert(req, res);
 });
 
 // Configuration Routes
-router.put('/configuration', authenticateToken, requireAdmin, sensitiveOperationLimit, async (req, res) => {
+router.put('/configuration', authenticateToken, requireAdmin, sensitiveOperationLimit, validateRequestSchema(updateConfigSchema), async (req, res) => {
   await swarmController.updateConfiguration(req, res);
 });
 

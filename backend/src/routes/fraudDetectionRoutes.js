@@ -10,18 +10,105 @@ const CredentialFraudDetector = require('../services/credentialFraudDetector');
 const RealTimeAnomalyDetector = require('../services/realTimeAnomalyDetector');
 const AutomatedInvestigationService = require('../services/automatedInvestigationService');
 
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
+
 const router = express.Router();
 
-// Middleware for request validation
-const validateRequest = (req, res, next) => {
-    try {
-        if (!req.body && req.method !== 'GET') {
-            return res.status(400).json({ error: 'Request body is required' });
-        }
-        next();
-    } catch (error) {
-        res.status(400).json({ error: 'Invalid request format' });
-    }
+const analyzeSubmissionSchema = {
+  body: Joi.object({
+    submissionId: Joi.string().trim().min(1).required(),
+    userId: Joi.string().trim().min(1).required(),
+    assignmentId: Joi.string().trim().min(1).required(),
+    content: Joi.string().min(1).required(),
+    contentType: Joi.string().valid('text', 'code', 'mixed').optional(),
+    metadata: Joi.object().optional(),
+  })
+};
+
+const verifyCredentialSchema = {
+  body: Joi.object({
+    credentialId: Joi.string().trim().min(1).required(),
+    userId: Joi.string().trim().min(1).required(),
+    credentialType: Joi.string().trim().min(1).required(),
+    institutionId: Joi.string().trim().min(1).required(),
+    issueDate: Joi.date().iso().optional(),
+    expirationDate: Joi.date().iso().optional(),
+    credentialData: Joi.object().optional(),
+    verificationCode: Joi.string().optional(),
+    metadata: Joi.object().optional(),
+  })
+};
+
+const detectAnomalySchema = {
+  body: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+    activityType: Joi.string().trim().min(1).required(),
+    timestamp: Joi.date().iso().required(),
+    metadata: Joi.object().optional(),
+  })
+};
+
+const initiateInvestigationSchema = {
+  body: Joi.object({
+    alertId: Joi.string().trim().min(1).required(),
+    type: Joi.string().trim().min(1).required(),
+    userId: Joi.string().trim().min(1).required(),
+    severity: Joi.string().valid('low', 'medium', 'high', 'critical').required(),
+    description: Joi.string().max(2000).optional(),
+    metadata: Joi.object().optional(),
+  })
+};
+
+const addEvidenceSchema = {
+  params: Joi.object({
+    investigationId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    type: Joi.string().trim().min(1).required(),
+    description: Joi.string().trim().min(1).required(),
+    data: Joi.any().required(),
+    metadata: Joi.object().optional(),
+  })
+};
+
+const resolveAlertSchema = {
+  params: Joi.object({
+    alertId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    resolution: Joi.string().trim().min(1).required(),
+    notes: Joi.string().optional(),
+    resolvedBy: Joi.string().optional(),
+  })
+};
+
+const batchAnalysisSchema = {
+  body: Joi.object({
+    submissions: Joi.array().min(1).max(100).required(),
+  })
+};
+
+const generateReportSchema = {
+  body: Joi.object({
+    type: Joi.string().trim().min(1).required(),
+    parameters: Joi.object().required(),
+    format: Joi.string().valid('json', 'pdf', 'csv').optional(),
+  })
+};
+
+const updateConfigSchema = {
+  body: Joi.object({
+    config: Joi.object().required(),
+  })
+};
+
+const testModelSchema = {
+  body: Joi.object({
+    modelType: Joi.string().trim().min(1).required(),
+    testData: Joi.any().required(),
+    parameters: Joi.object().optional(),
+  })
 };
 
 /**
@@ -76,7 +163,7 @@ router.get('/health', async (req, res) => {
  * @desc Analyze submission for plagiarism
  * @access Private
  */
-router.post('/analyze-submission', validateRequest, async (req, res) => {
+router.post('/analyze-submission', validateRequestSchema(analyzeSubmissionSchema), async (req, res) => {
     try {
         const {
             submissionId,
@@ -86,13 +173,6 @@ router.post('/analyze-submission', validateRequest, async (req, res) => {
             contentType = 'text',
             metadata = {}
         } = req.body;
-
-        if (!submissionId || !userId || !assignmentId || !content) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: submissionId, userId, assignmentId, content'
-            });
-        }
 
         const submission = {
             submissionId,
@@ -124,7 +204,7 @@ router.post('/analyze-submission', validateRequest, async (req, res) => {
  * @desc Verify credential for fraud detection
  * @access Private
  */
-router.post('/verify-credential', validateRequest, async (req, res) => {
+router.post('/verify-credential', validateRequestSchema(verifyCredentialSchema), async (req, res) => {
     try {
         const {
             credentialId,
@@ -137,13 +217,6 @@ router.post('/verify-credential', validateRequest, async (req, res) => {
             verificationCode,
             metadata = {}
         } = req.body;
-
-        if (!credentialId || !userId || !credentialType || !institutionId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: credentialId, userId, credentialType, institutionId'
-            });
-        }
 
         const credential = {
             credentialId,
@@ -178,7 +251,7 @@ router.post('/verify-credential', validateRequest, async (req, res) => {
  * @desc Detect anomalies in user behavior
  * @access Private
  */
-router.post('/detect-anomaly', validateRequest, async (req, res) => {
+router.post('/detect-anomaly', validateRequestSchema(detectAnomalySchema), async (req, res) => {
     try {
         const {
             userId,
@@ -186,13 +259,6 @@ router.post('/detect-anomaly', validateRequest, async (req, res) => {
             timestamp,
             metadata = {}
         } = req.body;
-
-        if (!userId || !activityType || !timestamp) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: userId, activityType, timestamp'
-            });
-        }
 
         const activity = {
             userId,
@@ -230,7 +296,7 @@ router.post('/detect-anomaly', validateRequest, async (req, res) => {
  * @desc Initiate automated investigation
  * @access Private
  */
-router.post('/initiate-investigation', validateRequest, async (req, res) => {
+router.post('/initiate-investigation', validateRequestSchema(initiateInvestigationSchema), async (req, res) => {
     try {
         const {
             alertId,
@@ -240,13 +306,6 @@ router.post('/initiate-investigation', validateRequest, async (req, res) => {
             description,
             metadata = {}
         } = req.body;
-
-        if (!alertId || !type || !userId || !severity) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: alertId, type, userId, severity'
-            });
-        }
 
         const alert = {
             id: alertId,
@@ -351,7 +410,7 @@ router.get('/investigations/:investigationId', async (req, res) => {
  * @desc Add evidence to investigation
  * @access Private
  */
-router.post('/investigations/:investigationId/evidence', validateRequest, async (req, res) => {
+router.post('/investigations/:investigationId/evidence', validateRequestSchema(addEvidenceSchema), async (req, res) => {
     try {
         const { investigationId } = req.params;
         const {
@@ -360,13 +419,6 @@ router.post('/investigations/:investigationId/evidence', validateRequest, async 
             data,
             metadata = {}
         } = req.body;
-
-        if (!type || !description || !data) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: type, description, data'
-            });
-        }
 
         const evidence = {
             investigationId,
@@ -565,7 +617,7 @@ router.get('/alerts/:alertId', async (req, res) => {
  * @desc Resolve fraud alert
  * @access Private
  */
-router.post('/alerts/:alertId/resolve', validateRequest, async (req, res) => {
+router.post('/alerts/:alertId/resolve', validateRequestSchema(resolveAlertSchema), async (req, res) => {
     try {
         const { alertId } = req.params;
         const {
@@ -573,13 +625,6 @@ router.post('/alerts/:alertId/resolve', validateRequest, async (req, res) => {
             notes,
             resolvedBy
         } = req.body;
-
-        if (!resolution) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required field: resolution'
-            });
-        }
 
         const result = await FraudDetectionService.resolveAlert(alertId, {
             resolution,
@@ -607,23 +652,9 @@ router.post('/alerts/:alertId/resolve', validateRequest, async (req, res) => {
  * @desc Perform batch analysis of submissions
  * @access Private
  */
-router.post('/batch-analysis', validateRequest, async (req, res) => {
+router.post('/batch-analysis', validateRequestSchema(batchAnalysisSchema), async (req, res) => {
     try {
         const { submissions } = req.body;
-
-        if (!submissions || !Array.isArray(submissions)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Submissions array is required'
-            });
-        }
-
-        if (submissions.length > 100) {
-            return res.status(400).json({
-                success: false,
-                error: 'Maximum 100 submissions per batch'
-            });
-        }
 
         const results = [];
         
@@ -713,20 +744,13 @@ router.get('/reports', async (req, res) => {
  * @desc Generate fraud detection report
  * @access Private
  */
-router.post('/reports/generate', validateRequest, async (req, res) => {
+router.post('/reports/generate', validateRequestSchema(generateReportSchema), async (req, res) => {
     try {
         const {
             type,
             parameters,
             format = 'json'
         } = req.body;
-
-        if (!type || !parameters) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: type, parameters'
-            });
-        }
 
         const report = await FraudDetectionService.generateReport(type, parameters, format);
 
@@ -772,16 +796,9 @@ router.get('/config', async (req, res) => {
  * @desc Update fraud detection configuration
  * @access Private
  */
-router.put('/config', validateRequest, async (req, res) => {
+router.put('/config', validateRequestSchema(updateConfigSchema), async (req, res) => {
     try {
         const { config } = req.body;
-
-        if (!config) {
-            return res.status(400).json({
-                success: false,
-                error: 'Configuration object is required'
-            });
-        }
 
         const result = await FraudDetectionService.updateConfiguration(config);
 
@@ -804,20 +821,13 @@ router.put('/config', validateRequest, async (req, res) => {
  * @desc Test fraud detection model
  * @access Private
  */
-router.post('/test-model', validateRequest, async (req, res) => {
+router.post('/test-model', validateRequestSchema(testModelSchema), async (req, res) => {
     try {
         const {
             modelType,
             testData,
             parameters = {}
         } = req.body;
-
-        if (!modelType || !testData) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: modelType, testData'
-            });
-        }
 
         const testResult = await FraudDetectionService.testModel(modelType, testData, parameters);
 
