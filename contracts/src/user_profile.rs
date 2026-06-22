@@ -1,8 +1,6 @@
 #![no_std]
 use crate::utils::storage::{PackedTimestamps, PackedUserFlags, StorageUtils};
-use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, Address, Env, String, Vec,
-};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String, Vec};
 
 /// Achievement tier with weight
 #[contracttype]
@@ -168,15 +166,21 @@ impl UserProfileContract {
             let avatar_ref = avatar_url.as_ref();
             let email_hash = Self::generate_string_hash(
                 &env,
-                &email_ref.map(|s| s.clone()).unwrap_or_else(|| String::from_str(&env, "")),
+                &email_ref
+                    .map(|s| s.clone())
+                    .unwrap_or_else(|| String::from_str(&env, "")),
             );
             let bio_hash = Self::generate_string_hash(
                 &env,
-                &bio_ref.map(|s| s.clone()).unwrap_or_else(|| String::from_str(&env, "")),
+                &bio_ref
+                    .map(|s| s.clone())
+                    .unwrap_or_else(|| String::from_str(&env, "")),
             );
             let avatar_hash = Self::generate_string_hash(
                 &env,
-                &avatar_ref.map(|s| s.clone()).unwrap_or_else(|| String::from_str(&env, "")),
+                &avatar_ref
+                    .map(|s| s.clone())
+                    .unwrap_or_else(|| String::from_str(&env, "")),
             );
 
             let new_profile = UserProfile {
@@ -251,11 +255,11 @@ impl UserProfileContract {
     /// Map an achievement tier to its numeric weight value
     pub fn get_achievement_tier_weight(tier: u32) -> u32 {
         match tier {
-            0 => 1,  // Bronze
-            1 => 2,  // Silver
-            2 => 3,  // Gold
-            3 => 4,  // Platinum
-            _ => 1,  // Default to Bronze
+            0 => 1, // Bronze
+            1 => 2, // Silver
+            2 => 3, // Gold
+            3 => 4, // Platinum
+            _ => 1, // Default to Bronze
         }
     }
 
@@ -329,7 +333,9 @@ impl UserProfileContract {
         let badge_ref = badge_url.as_ref();
         let badge_hash = Self::generate_string_hash(
             &env,
-            &badge_ref.map(|s| s.clone()).unwrap_or_else(|| String::from_str(&env, "")),
+            &badge_ref
+                .map(|s| s.clone())
+                .unwrap_or_else(|| String::from_str(&env, "")),
         );
 
         let weight = Self::get_achievement_tier_weight(tier);

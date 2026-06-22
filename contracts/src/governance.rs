@@ -56,10 +56,10 @@ pub struct EligibilityCriteria {
 #[derive(Clone, Debug)]
 pub struct ScholarshipProposal {
     pub proposal_id: u64,
-    pub total_amount: i128,        // total tokens reserved
-    pub per_recipient: i128,       // tokens per recipient
-    pub max_recipients: u32,       // cap on number of disbursements
-    pub disbursed_count: u32,      // how many have been paid out
+    pub total_amount: i128,   // total tokens reserved
+    pub per_recipient: i128,  // tokens per recipient
+    pub max_recipients: u32,  // cap on number of disbursements
+    pub disbursed_count: u32, // how many have been paid out
     pub eligibility: EligibilityCriteria,
     pub application_deadline: u64, // timestamp after which no more applications
     pub returned_to_treasury: bool,
@@ -89,10 +89,10 @@ pub enum GovernanceDataKey {
     Delegate(Address),
     TreasuryBalance,
     // Scholarship keys
-    Scholarship(u64),                    // ScholarshipProposal keyed by proposal_id
-    ScholarshipApplicant(u64, Address),  // whether address has applied
-    ScholarshipRecord(u64, u32),         // disbursement record (proposal_id, index)
-    ScholarshipRecordCount(u64),         // number of disbursements for a proposal
+    Scholarship(u64),                   // ScholarshipProposal keyed by proposal_id
+    ScholarshipApplicant(u64, Address), // whether address has applied
+    ScholarshipRecord(u64, u32),        // disbursement record (proposal_id, index)
+    ScholarshipRecordCount(u64),        // number of disbursements for a proposal
     // Per-student credential count (set externally / by credential registry)
     StudentCredentials(Address),
 }
@@ -117,8 +117,9 @@ impl Governance {
         quorum: i128,
     ) -> u64 {
         proposer.require_auth();
-        Self::validate_proposal(&env, proposer.clone(), title.clone(), description.clone(), voting_period);
-        let count: u64 = env.storage().instance()
+        let count: u64 = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::ProposalCount)
             .unwrap_or(0);
         let id = count + 1;
@@ -137,12 +138,12 @@ impl Governance {
             status: ProposalStatus::Active,
             quorum,
         };
-        env.storage().instance().set(&GovernanceDataKey::Proposal(id), &proposal);
-        env.storage().instance().set(&GovernanceDataKey::ProposalCount, &id);
-        env.storage().instance().set(
-            &GovernanceDataKey::ProposalByProposerTitle(proposer, title),
-            &start_time,
-        );
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::Proposal(id), &proposal);
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::ProposalCount, &id);
         id
     }
 
@@ -168,18 +169,27 @@ impl Governance {
         }
 
         let id = Self::create_proposal(
-            env.clone(), proposer, title, description, voting_period, quorum,
+            env.clone(),
+            proposer,
+            title,
+            description,
+            voting_period,
+            quorum,
         );
 
         // Reserve funds from treasury immediately so they cannot be double-spent.
-        let treasury: i128 = env.storage().instance()
+        let treasury: i128 = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::TreasuryBalance)
             .unwrap_or(0);
         if treasury < total_amount {
             panic!("Insufficient treasury funds");
         }
-        env.storage().instance()
-            .set(&GovernanceDataKey::TreasuryBalance, &(treasury - total_amount));
+        env.storage().instance().set(
+            &GovernanceDataKey::TreasuryBalance,
+            &(treasury - total_amount),
+        );
 
         let scholarship = ScholarshipProposal {
             proposal_id: id,
@@ -191,25 +201,27 @@ impl Governance {
             application_deadline: 0, // set when proposal is executed
             returned_to_treasury: false,
         };
-        env.storage().instance().set(&GovernanceDataKey::Scholarship(id), &scholarship);
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::Scholarship(id), &scholarship);
         id
     }
 
-    pub fn cast_vote(
-        env: Env,
-        voter: Address,
-        proposal_id: u64,
-        support: u32,
-        voting_power: i128,
-    ) {
+    pub fn cast_vote(env: Env, voter: Address, proposal_id: u64, support: u32, voting_power: i128) {
         voter.require_auth();
-        let mut proposal: Proposal = env.storage().instance()
+        let mut proposal: Proposal = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::Proposal(proposal_id))
             .expect("Proposal not found");
         if env.ledger().timestamp() > proposal.end_time {
             panic!("Voting period ended");
         }
-        if env.storage().instance().has(&GovernanceDataKey::Vote(proposal_id, voter.clone())) {
+        if env
+            .storage()
+            .instance()
+            .has(&GovernanceDataKey::Vote(proposal_id, voter.clone()))
+        {
             panic!("Already voted");
         }
         match support {
@@ -218,12 +230,19 @@ impl Governance {
             2 => proposal.abstain_votes += voting_power,
             _ => panic!("Invalid support option"),
         }
-        env.storage().instance().set(&GovernanceDataKey::Proposal(proposal_id), &proposal);
-        env.storage().instance().set(&GovernanceDataKey::Vote(proposal_id, voter.clone()), &support);
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::Proposal(proposal_id), &proposal);
+        env.storage().instance().set(
+            &GovernanceDataKey::Vote(proposal_id, voter.clone()),
+            &support,
+        );
     }
 
     pub fn execute_proposal(env: Env, proposal_id: u64, application_window: u64) {
-        let mut proposal: Proposal = env.storage().instance()
+        let mut proposal: Proposal = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::Proposal(proposal_id))
             .expect("Proposal not found");
         if env.ledger().timestamp() < proposal.end_time {
@@ -234,7 +253,9 @@ impl Governance {
             // Return reserved scholarship funds if applicable
             Self::return_scholarship_funds_if_defeated(&env, proposal_id);
         } else if proposal.for_votes > proposal.against_votes {
-            let timelock_delay: u64 = env.storage().instance()
+            let timelock_delay: u64 = env
+                .storage()
+                .instance()
                 .get(&GovernanceDataKey::TimelockDelay)
                 .unwrap_or(86400);
             if proposal.status == ProposalStatus::Active {
@@ -244,11 +265,15 @@ impl Governance {
                 if env.ledger().timestamp() >= proposal.execution_time {
                     proposal.status = ProposalStatus::Executed;
                     // Open the scholarship application window
-                    if let Some(mut s) = env.storage().instance()
+                    if let Some(mut s) = env
+                        .storage()
+                        .instance()
                         .get::<_, ScholarshipProposal>(&GovernanceDataKey::Scholarship(proposal_id))
                     {
                         s.application_deadline = env.ledger().timestamp() + application_window;
-                        env.storage().instance().set(&GovernanceDataKey::Scholarship(proposal_id), &s);
+                        env.storage()
+                            .instance()
+                            .set(&GovernanceDataKey::Scholarship(proposal_id), &s);
                     }
                 } else {
                     panic!("Timelock period not ended");
@@ -258,21 +283,27 @@ impl Governance {
             proposal.status = ProposalStatus::Defeated;
             Self::return_scholarship_funds_if_defeated(&env, proposal_id);
         }
-        env.storage().instance().set(&GovernanceDataKey::Proposal(proposal_id), &proposal);
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::Proposal(proposal_id), &proposal);
     }
 
     /// Student applies for a scholarship. Funds are disbursed immediately if eligible.
     pub fn apply_for_scholarship(env: Env, applicant: Address, proposal_id: u64) {
         applicant.require_auth();
 
-        let proposal: Proposal = env.storage().instance()
+        let proposal: Proposal = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::Proposal(proposal_id))
             .expect("Proposal not found");
         if proposal.status != ProposalStatus::Executed {
             panic!("Scholarship not yet approved/executed");
         }
 
-        let mut scholarship: ScholarshipProposal = env.storage().instance()
+        let mut scholarship: ScholarshipProposal = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::Scholarship(proposal_id))
             .expect("Not a scholarship proposal");
 
@@ -283,14 +314,21 @@ impl Governance {
         if scholarship.disbursed_count >= scholarship.max_recipients {
             panic!("All slots filled");
         }
-        if env.storage().instance()
-            .has(&GovernanceDataKey::ScholarshipApplicant(proposal_id, applicant.clone()))
+        if env
+            .storage()
+            .instance()
+            .has(&GovernanceDataKey::ScholarshipApplicant(
+                proposal_id,
+                applicant.clone(),
+            ))
         {
             panic!("Already applied");
         }
 
         // Eligibility check
-        let cred_count: u32 = env.storage().instance()
+        let cred_count: u32 = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::StudentCredentials(applicant.clone()))
             .unwrap_or(0);
         if cred_count < scholarship.eligibility.min_credentials {
@@ -301,10 +339,14 @@ impl Governance {
 
         // Disburse
         scholarship.disbursed_count += 1;
-        env.storage().instance()
-            .set(&GovernanceDataKey::ScholarshipApplicant(proposal_id, applicant.clone()), &true);
+        env.storage().instance().set(
+            &GovernanceDataKey::ScholarshipApplicant(proposal_id, applicant.clone()),
+            &true,
+        );
 
-        let record_count: u32 = env.storage().instance()
+        let record_count: u32 = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::ScholarshipRecordCount(proposal_id))
             .unwrap_or(0);
         let record = ScholarshipRecord {
@@ -313,11 +355,16 @@ impl Governance {
             amount: scholarship.per_recipient,
             timestamp: now,
         };
-        env.storage().instance()
-            .set(&GovernanceDataKey::ScholarshipRecord(proposal_id, record_count), &record);
-        env.storage().instance()
-            .set(&GovernanceDataKey::ScholarshipRecordCount(proposal_id), &(record_count + 1));
-        env.storage().instance()
+        env.storage().instance().set(
+            &GovernanceDataKey::ScholarshipRecord(proposal_id, record_count),
+            &record,
+        );
+        env.storage().instance().set(
+            &GovernanceDataKey::ScholarshipRecordCount(proposal_id),
+            &(record_count + 1),
+        );
+        env.storage()
+            .instance()
             .set(&GovernanceDataKey::Scholarship(proposal_id), &scholarship);
 
         // Actual token transfer would call a token contract here.
@@ -326,7 +373,9 @@ impl Governance {
 
     /// Returns unclaimed scholarship funds to treasury after application window closes.
     pub fn return_unclaimed_scholarship_funds(env: Env, proposal_id: u64) {
-        let mut scholarship: ScholarshipProposal = env.storage().instance()
+        let mut scholarship: ScholarshipProposal = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::Scholarship(proposal_id))
             .expect("Not a scholarship proposal");
 
@@ -341,83 +390,112 @@ impl Governance {
         let remaining = scholarship.total_amount - disbursed;
 
         if remaining > 0 {
-            let treasury: i128 = env.storage().instance()
+            let treasury: i128 = env
+                .storage()
+                .instance()
                 .get(&GovernanceDataKey::TreasuryBalance)
                 .unwrap_or(0);
-            env.storage().instance()
+            env.storage()
+                .instance()
                 .set(&GovernanceDataKey::TreasuryBalance, &(treasury + remaining));
         }
 
         scholarship.returned_to_treasury = true;
-        env.storage().instance().set(&GovernanceDataKey::Scholarship(proposal_id), &scholarship);
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::Scholarship(proposal_id), &scholarship);
     }
 
     /// Set student credential count (called by CredentialRegistry contract).
     pub fn set_student_credentials(env: Env, student: Address, count: u32) {
-        env.storage().instance().set(&GovernanceDataKey::StudentCredentials(student), &count);
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::StudentCredentials(student), &count);
     }
 
     pub fn get_scholarship(env: &Env, proposal_id: u64) -> ScholarshipProposal {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&GovernanceDataKey::Scholarship(proposal_id))
             .expect("Not a scholarship proposal")
     }
 
     pub fn get_scholarship_record(env: &Env, proposal_id: u64, index: u32) -> ScholarshipRecord {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&GovernanceDataKey::ScholarshipRecord(proposal_id, index))
             .expect("Record not found")
     }
 
     pub fn get_scholarship_record_count(env: &Env, proposal_id: u64) -> u32 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&GovernanceDataKey::ScholarshipRecordCount(proposal_id))
             .unwrap_or(0)
     }
 
     pub fn delegate(env: Env, from: Address, to: Address) {
         from.require_auth();
-        env.storage().instance().set(&GovernanceDataKey::Delegate(from), &to);
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::Delegate(from), &to);
     }
 
     pub fn get_delegate(env: &Env, voter: Address) -> Address {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&GovernanceDataKey::Delegate(voter.clone()))
             .unwrap_or(voter)
     }
 
     pub fn deposit_to_treasury(env: Env, amount: i128) {
-        let current: i128 = env.storage().instance()
+        let current: i128 = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::TreasuryBalance)
             .unwrap_or(0);
-        env.storage().instance().set(&GovernanceDataKey::TreasuryBalance, &(current + amount));
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::TreasuryBalance, &(current + amount));
     }
 
     pub fn withdraw_from_treasury(env: Env, amount: i128, recipient: Address) {
-        let current: i128 = env.storage().instance()
+        let current: i128 = env
+            .storage()
+            .instance()
             .get(&GovernanceDataKey::TreasuryBalance)
             .unwrap_or(0);
         if current < amount {
             panic!("Insufficient treasury funds");
         }
-        env.storage().instance().set(&GovernanceDataKey::TreasuryBalance, &(current - amount));
+        env.storage()
+            .instance()
+            .set(&GovernanceDataKey::TreasuryBalance, &(current - amount));
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
     fn return_scholarship_funds_if_defeated(env: &Env, proposal_id: u64) {
-        if let Some(scholarship) = env.storage().instance()
+        if let Some(scholarship) = env
+            .storage()
+            .instance()
             .get::<_, ScholarshipProposal>(&GovernanceDataKey::Scholarship(proposal_id))
         {
             if !scholarship.returned_to_treasury {
-                let treasury: i128 = env.storage().instance()
+                let treasury: i128 = env
+                    .storage()
+                    .instance()
                     .get(&GovernanceDataKey::TreasuryBalance)
                     .unwrap_or(0);
-                env.storage().instance()
-                    .set(&GovernanceDataKey::TreasuryBalance, &(treasury + scholarship.total_amount));
+                env.storage().instance().set(
+                    &GovernanceDataKey::TreasuryBalance,
+                    &(treasury + scholarship.total_amount),
+                );
                 let mut s = scholarship;
                 s.returned_to_treasury = true;
-                env.storage().instance().set(&GovernanceDataKey::Scholarship(proposal_id), &s);
+                env.storage()
+                    .instance()
+                    .set(&GovernanceDataKey::Scholarship(proposal_id), &s);
             }
         }
     }
@@ -453,10 +531,15 @@ impl Governance {
     }
 
     fn integer_sqrt(n: i128) -> i128 {
-        if n < 2 { return n.max(0); }
+        if n < 2 {
+            return n.max(0);
+        }
         let mut x = n / 2;
         let mut y = (x + n / x) / 2;
-        while y < x { x = y; y = (x + n / x) / 2; }
+        while y < x {
+            x = y;
+            y = (x + n / x) / 2;
+        }
         x
     }
 }
