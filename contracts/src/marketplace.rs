@@ -112,7 +112,7 @@ impl MarketplaceContract {
             .set(&MarketplaceKey::ListingCount, &listing_id);
 
         env.events().publish(
-            (symbol_short!("market"), symbol_short!("listed")),
+            (symbol_short!("marketplace"), symbol_short!("created")),
             (listing_id, credential_id, seller, price),
         );
 
@@ -157,7 +157,7 @@ impl MarketplaceContract {
         );
 
         env.events().publish(
-            (symbol_short!("market"), symbol_short!("sold")),
+            (symbol_short!("marketplace"), symbol_short!("sale_completed")),
             (listing_id, buyer, seller_amount, royalty_amount),
         );
     }
@@ -182,7 +182,7 @@ impl MarketplaceContract {
         );
 
         env.events().publish(
-            (symbol_short!("market"), symbol_short!("rented")),
+            (symbol_short!("marketplace"), symbol_short!("rented")),
             (credential_id, tenant, expiry, price),
         );
     }
@@ -219,7 +219,7 @@ impl MarketplaceContract {
         );
 
         env.events().publish(
-            (symbol_short!("stake"), symbol_short!("staked")),
+            (symbol_short!("marketplace"), symbol_short!("staked")),
             (credential_id, staker, amount),
         );
     }
@@ -255,7 +255,7 @@ impl MarketplaceContract {
         );
 
         env.events().publish(
-            (symbol_short!("stake"), symbol_short!("claimed")),
+            (symbol_short!("marketplace"), symbol_short!("rewards_claimed")),
             (staker, total_reward),
         );
 
@@ -289,7 +289,7 @@ impl MarketplaceContract {
             .set(&MarketplaceKey::DisputeCount, &dispute_id);
 
         env.events().publish(
-            (symbol_short!("dispute"), symbol_short!("opened")),
+            (symbol_short!("marketplace"), symbol_short!("dispute_opened")),
             (dispute_id, listing_id, buyer),
         );
 
@@ -322,7 +322,7 @@ impl MarketplaceContract {
             .set(&MarketplaceKey::Dispute(dispute_id), &dispute);
 
         env.events().publish(
-            (symbol_short!("dispute"), symbol_short!("resolved")),
+            (symbol_short!("marketplace"), symbol_short!("dispute_resolved")),
             (dispute_id, dispute.status),
         );
     }
@@ -339,7 +339,7 @@ impl MarketplaceContract {
         env.storage().instance().set(&symbol_short!("escrow_t"), &release_time);
         
         env.events().publish(
-            (symbol_short!("market"), symbol_short!("escrow")),
+            (symbol_short!("marketplace"), symbol_short!("escrow_initiated")),
             (escrow_id, buyer, listing_id, release_time),
         );
         
