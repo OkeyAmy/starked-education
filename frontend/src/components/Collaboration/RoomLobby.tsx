@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Video, Users, Calendar, Plus } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { SkeletonRegion } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface Room {
   id: string;
@@ -75,10 +77,44 @@ const RoomLobby: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading rooms...</p>
+      <div className="min-h-screen bg-gray-900 p-8">
+        <div className="mx-auto max-w-6xl">
+          <SkeletonRegion aria-label="Loading rooms">
+            <div className="mb-8">
+              <Skeleton className="h-10 w-72 bg-slate-700" />
+              <Skeleton className="mt-2 h-5 w-56 bg-slate-700" />
+            </div>
+
+            <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Skeleton className="h-16 w-full rounded-lg bg-slate-700" />
+              <Skeleton className="h-16 w-full rounded-lg bg-slate-700" />
+            </div>
+
+            <div>
+              <Skeleton className="h-8 w-40 bg-slate-700" />
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="rounded-lg bg-slate-800 p-6">
+                    <div className="mb-4 flex items-start justify-between">
+                      <Skeleton className="h-6 w-40 bg-slate-700" />
+                      <Skeleton className="h-5 w-12 rounded-full bg-slate-700" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-4 rounded bg-slate-700" />
+                        <Skeleton className="h-3 w-32 bg-slate-700" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-4 rounded bg-slate-700" />
+                        <Skeleton className="h-3 w-40 bg-slate-700" />
+                      </div>
+                    </div>
+                    <Skeleton className="mt-4 h-10 w-full rounded-lg bg-slate-700" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SkeletonRegion>
         </div>
       </div>
     );
