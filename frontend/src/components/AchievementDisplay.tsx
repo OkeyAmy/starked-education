@@ -247,8 +247,15 @@ export function AchievementDisplay({
 
             {/* Category Filter */}
             {filterable && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <label
+                  htmlFor="achievement-category-filter"
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Category
+                </label>
                 <select
+                  id="achievement-category-filter"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm"
