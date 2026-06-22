@@ -6,6 +6,8 @@
 import { Request, Response } from 'express';
 import { ContentService } from '../services/contentService';
 import { MediaService } from '../services/mediaService';
+import multiTierCache from '../services/multiTierCache';
+const cache = new multiTierCache();
 import { 
   ContentCreateRequest, 
   ContentUpdateRequest, 
@@ -35,6 +37,7 @@ export class ContentController {
       const contentRequest: ContentCreateRequest = req.body;
       const content = await this.contentService.createContent(contentRequest, userId);
 
+      await cache.del('content:list');
       res.status(201).json({
         success: true,
         data: content,
@@ -55,6 +58,12 @@ export class ContentController {
   async getContentById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const cacheKey = `content:id:${id}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        res.json({ success: true, data: cached });
+        return;
+      }
       const content = await this.contentService.getContentById(id);
 
       if (!content) {
@@ -68,6 +77,9 @@ export class ContentController {
       // Increment view count
       content.analytics.views++;
       content.analytics.lastViewed = new Date();
+
+      // Store in cache
+      await cache.set(cacheKey, content);
 
       res.json({
         success: true,
@@ -109,9 +121,16 @@ export class ContentController {
         };
       }
 
+      const cacheKey = `content:filter:${JSON.stringify(filter)}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        res.json(cached);
+        return;
+      }
+
       const result = await this.contentService.getContent(filter);
 
-      res.json({
+      const response = {
         success: true,
         data: result.content,
         pagination: {
@@ -120,7 +139,10 @@ export class ContentController {
           total: result.total,
           pages: Math.ceil(result.total / (filter.limit || 20))
         }
-      });
+      };
+
+      await cache.set(cacheKey, response);
+      res.json(response);
     } catch (error) {
       logger.error('Error in getContent:', error);
       res.status(500).json({
@@ -146,6 +168,8 @@ export class ContentController {
       const updateRequest: ContentUpdateRequest = req.body;
       const content = await this.contentService.updateContent(id, updateRequest, userId);
 
+      await cache.del(`content:id:${req.params.id}`);
+      await cache.del('content:list');
       res.json({
         success: true,
         data: content,
@@ -175,6 +199,8 @@ export class ContentController {
 
       await this.contentService.deleteContent(id, userId);
 
+      await cache.del(`content:id:${req.params.id}`);
+      await cache.del('content:list');
       res.json({
         success: true,
         message: 'Content deleted successfully'
@@ -203,6 +229,8 @@ export class ContentController {
 
       const content = await this.contentService.publishContent(id, userId);
 
+      await cache.del(`content:id:${req.params.id}`);
+      await cache.del('content:list');
       res.json({
         success: true,
         data: content,

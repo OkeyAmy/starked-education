@@ -4,7 +4,9 @@
  */
 
 import { Request, Response, Router } from "express";
+import multiTierCache from "../services/multiTierCache";
 import { validationResult, query, body } from "express-validator";
+const cache = new multiTierCache();
 import searchService from "../services/searchService";
 import recommendationService from "../services/recommendationService";
 import {
@@ -137,6 +139,11 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const { q: searchQuery, limit = 5 } = req.query;
+      const cacheKey = `suggestions:${JSON.stringify({searchQuery, limit})}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
 
       logger.info(`Suggestions request - Query: ${searchQuery}`);
 
@@ -145,11 +152,13 @@ router.get(
         parseInt(limit as string),
       );
 
-      return res.status(200).json({
+      const response = {
         success: true,
         message: "Suggestions retrieved successfully",
         data: suggestions,
-      });
+      };
+      await cache.set(cacheKey, response);
+      return res.json(response);
     } catch (error) {
       logger.error("Suggestions error", error);
       return res.status(500).json({
@@ -178,16 +187,22 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const limit = parseInt((req.query.limit as string) || "10");
+      const cacheKey = `trending:${limit}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
 
       logger.info(`Trending courses request - Limit: ${limit}`);
 
       const courses = await recommendationService.getTrendingCourses(limit);
-
-      return res.status(200).json({
+      const response = {
         success: true,
         message: "Trending courses retrieved successfully",
         data: courses,
-      });
+      };
+      await cache.set(cacheKey, response);
+      return res.status(200).json(response);
     } catch (error) {
       logger.error("Trending courses error", error);
       return res.status(500).json({
@@ -221,6 +236,11 @@ router.get(
     try {
       const { courseId } = req.params;
       const limit = parseInt((req.query.limit as string) || "5");
+      const cacheKey = `similar:${courseId}:${limit}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
 
       logger.info(
         `Similar courses request - Course: ${courseId}, Limit: ${limit}`,
@@ -230,12 +250,13 @@ router.get(
         courseId,
         limit,
       );
-
-      return res.status(200).json({
+      const response = {
         success: true,
         message: "Similar courses retrieved successfully",
         data: similar,
-      });
+      };
+      await cache.set(cacheKey, response);
+      return res.status(200).json(response);
     } catch (error) {
       logger.error("Similar courses error", error);
       return res.status(500).json({
@@ -364,6 +385,7 @@ router.post(
         courseId,
         data,
       );
+      await cache.del("trending:*");
 
       return res.status(201).json({
         success: true,
@@ -391,15 +413,16 @@ router.post(
  */
 router.get("/categories", async (req: Request, res: Response) => {
   try {
+    const cacheKey = "categories";
+    const cached = await cache.get(cacheKey);
+    if (cached) return res.json(cached);
+
     logger.info("Categories request");
 
     const categories = await searchService.getCategories();
-
-    return res.status(200).json({
-      success: true,
-      message: "Categories retrieved successfully",
-      data: categories,
-    });
+    const response = { success: true, message: "Categories retrieved successfully", data: categories };
+    await cache.set(cacheKey, response);
+    return res.status(200).json(response);
   } catch (error) {
     logger.error("Categories error", error);
     return res.status(500).json({
@@ -421,15 +444,16 @@ router.get("/categories", async (req: Request, res: Response) => {
  */
 router.get("/categories/tree", async (req: Request, res: Response) => {
   try {
+    const cacheKey = "categories:tree";
+    const cached = await cache.get(cacheKey);
+    if (cached) return res.json(cached);
+
     logger.info("Category tree request");
 
     const categories = await searchService.getCategoryTree();
-
-    return res.status(200).json({
-      success: true,
-      message: "Category tree retrieved successfully",
-      data: categories,
-    });
+    const response = { success: true, message: "Category tree retrieved successfully", data: categories };
+    await cache.set(cacheKey, response);
+    return res.status(200).json(response);
   } catch (error) {
     logger.error("Category tree error", error);
     return res.status(500).json({
@@ -480,6 +504,8 @@ router.post(
       logger.info(`Category creation request - ID: ${category.id}`);
 
       const created = await searchService.upsertCategory(category);
+      await cache.del("categories");
+      await cache.del("categories:tree");
 
       return res.status(201).json({
         success: true,
@@ -530,6 +556,8 @@ router.put(
       logger.info(`Category update request - ID: ${category.id}`);
 
       const updated = await searchService.upsertCategory(category);
+      await cache.del("categories");
+      await cache.del("categories:tree");
 
       return res.status(200).json({
         success: true,
@@ -566,6 +594,8 @@ router.delete(
       logger.info(`Category deletion request - ID: ${categoryId}`);
 
       await searchService.deleteCategory(categoryId);
+      await cache.del("categories");
+      await cache.del("categories:tree");
 
       return res.status(200).json({
         success: true,
