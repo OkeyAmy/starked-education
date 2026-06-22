@@ -16,6 +16,12 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // NOTE: This segment intentionally does NOT render its own <main>. The root
+  // App-Router layout (`app/layout.tsx`) provides the single canonical
+  // <main id="main-content"> landmark. Adding a second <main> here would
+  // produce invalid HTML and trip axe-core's `landmark-unique` rule.
+  // We attach `role="region"` + aria-label so admin screen-reader users get a
+  // labelled sub-region within the main landmark.
   return (
     <html lang="en">
       <body className={inter.className}>
@@ -25,9 +31,14 @@ export default function AdminLayout({
               <AdminSidebar />
               <div className="flex-1">
                 <AdminHeader />
-                <main className="p-6">
+                <section
+                  id="admin-content-region"
+                  aria-label="Admin content"
+                  tabIndex={-1}
+                  className="focus:outline-none p-6"
+                >
                   {children}
-                </main>
+                </section>
               </div>
             </div>
           </div>

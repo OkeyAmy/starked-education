@@ -155,8 +155,8 @@ export default function AdminSidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      {/* Navigation landmark — aria-label disambiguates it from any other nav on the page. */}
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto" aria-label="Admin navigation">
         {sidebarItems.map(item => renderSidebarItem(item))}
       </nav>
 
