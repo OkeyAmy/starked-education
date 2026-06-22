@@ -1,5 +1,5 @@
 import React from 'react'
-import ProgressDashboard from '../components/analytics/ProgressDashboard'
+import ProgressDashboard from '../components/Analytics/ProgressDashboard'
 
 const AnalyticsPage: React.FC = () => {
   return (

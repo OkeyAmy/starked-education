@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const { i18n } = require('./next-i18next.config');
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 const nextConfig = {
   typescript: {
@@ -26,39 +29,11 @@ const nextConfig = {
   },
   // Performance monitoring configuration
   webpack: (config, { isServer }) => {
-    // Enable bundle analysis in production
-    if (process.env.ANALYZE === 'true') {
-      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-      config.plugins.push(
-        new BundleAnalyzerPlugin({
-          analyzerMode: 'static',
-          openAnalyzer: false,
-        })
-      );
-    }
-
   // Performance optimizations
     // Stub native-only modules that can't run in browser/build
     config.resolve.alias = {
       ...config.resolve.alias,
       brainflow: false,
-    };
-
-    config.optimization.splitChunks = {
-      chunks: 'all',
-      cacheGroups: {
-        vendor: {
-          test: /[\\/]node_modules[\\/]/,
-          name: 'vendors',
-          chunks: 'all',
-        },
-        common: {
-          name: 'common',
-          minChunks: 2,
-          chunks: 'all',
-          enforce: true,
-        },
-      },
     };
 
     return config;
@@ -95,4 +70,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { VirtualScienceLab } from '../../components/Lab/VirtualScienceLab';
+import { VirtualScienceLab } from '../../components/Lab';
 
 export const metadata: Metadata = {
   title: 'Virtual Science Laboratory — StarkEd',
