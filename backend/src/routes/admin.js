@@ -1,12 +1,38 @@
 const express = require('express');
+const Joi = require('joi');
 const {
   authenticateToken,
   requireAdmin,
   requirePermission,
 } = require('../middleware/auth');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
 const { PERMISSIONS, UserRole } = require('../utils/roles');
 const { AnalyticsService } = require('../services/analyticsService');
 const router = express.Router();
+
+const updateSettingsSchema = {
+  body: Joi.object({
+    category: Joi.string().valid('general', 'security', 'features', 'limits').required(),
+    settings: Joi.object().min(1).required(),
+  })
+};
+
+const backupSchema = {
+  body: Joi.object({
+    type: Joi.string().valid('full', 'incremental', 'differential').optional(),
+    includeFiles: Joi.boolean().optional(),
+  })
+};
+
+const announcementSchema = {
+  body: Joi.object({
+    title: Joi.string().trim().min(1).max(200).required(),
+    message: Joi.string().trim().min(1).max(5000).required(),
+    targetRoles: Joi.array().items(Joi.string()).optional(),
+    priority: Joi.string().valid('low', 'normal', 'high', 'urgent').optional(),
+    expiresAt: Joi.date().iso().optional(),
+  })
+};
 
 // Apply authentication and admin middleware to all routes
 router.use(authenticateToken);
@@ -198,24 +224,10 @@ router.get(
 router.put(
   '/settings',
   requirePermission(PERMISSIONS.SYSTEM_MANAGE),
+  validateRequestSchema(updateSettingsSchema),
   (req, res) => {
     try {
       const { category, settings } = req.body;
-
-      if (!category || !settings) {
-        return res.status(400).json({
-          error: 'Invalid request',
-          message: 'Category and settings are required',
-        });
-      }
-
-      const validCategories = ['general', 'security', 'features', 'limits'];
-      if (!validCategories.includes(category)) {
-        return res.status(400).json({
-          error: 'Invalid category',
-          message: `Category must be one of: ${validCategories.join(', ')}`,
-        });
-      }
 
       // Settings update would go to a configuration store in production
       res.json({
@@ -241,6 +253,7 @@ router.put(
 router.post(
   '/backup',
   requirePermission(PERMISSIONS.SYSTEM_MANAGE),
+  validateRequestSchema(backupSchema),
   (req, res) => {
     try {
       const { type = 'full', includeFiles = true } = req.body;
@@ -301,6 +314,7 @@ router.get(
 router.post(
   '/announcements',
   requirePermission(PERMISSIONS.SYSTEM_MANAGE),
+  validateRequestSchema(announcementSchema),
   (req, res) => {
     try {
       const {
@@ -310,33 +324,6 @@ router.post(
         priority = 'normal',
         expiresAt,
       } = req.body;
-
-      if (!title || !message) {
-        return res.status(400).json({
-          error: 'Invalid request',
-          message: 'Title and message are required',
-        });
-      }
-
-      const validPriorities = ['low', 'normal', 'high', 'urgent'];
-      if (!validPriorities.includes(priority)) {
-        return res.status(400).json({
-          error: 'Invalid priority',
-          message: `Priority must be one of: ${validPriorities.join(', ')}`,
-        });
-      }
-
-      if (targetRoles.length > 0) {
-        const invalidRoles = targetRoles.filter(
-          (role) => !Object.values(UserRole).includes(role)
-        );
-        if (invalidRoles.length > 0) {
-          return res.status(400).json({
-            error: 'Invalid roles',
-            message: `Invalid target roles: ${invalidRoles.join(', ')}`,
-          });
-        }
-      }
 
       const announcement = {
         id: `announcement_${Date.now()}`,

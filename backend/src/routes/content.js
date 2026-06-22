@@ -7,6 +7,8 @@ const { PERMISSIONS } = require('../utils/roles');
 const { ipfsAuth, optionalIpfsAuth, validateContentAccess, validateFileSize } = require('../middleware/ipfsAuth');
 const { createIpfsError } = require('../utils/ipfsUtils');
 const { contentWriteLimiter, readLimiter } = require('../middleware/rateLimiter');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -22,6 +24,14 @@ const upload = multer({
   }
 });
 
+const uploadContentSchema = {
+  body: Joi.object({
+    metadata: Joi.string().optional(),
+    includeMetadata: Joi.string().valid('true', 'false').optional(),
+    wrapWithDirectory: Joi.string().valid('true', 'false').optional(),
+  })
+};
+
 /**
  * Upload a single file to IPFS
  * POST /api/content/upload
@@ -32,6 +42,7 @@ router.post('/upload',
   ipfsAuth('upload'),
   upload.single('file'),
   validateFileSize,
+  validateRequestSchema(uploadContentSchema),
   async (req, res) => {
     try {
       if (!req.file) {
@@ -95,6 +106,7 @@ router.post('/upload/batch',
   ipfsAuth('upload'),
   upload.array('files', 10),
   validateFileSize,
+  validateRequestSchema(uploadContentSchema),
   async (req, res) => {
     try {
       if (!req.files || req.files.length === 0) {

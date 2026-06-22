@@ -6,6 +6,8 @@ const SecureMultiPartyComputation = require('../services/secureMultiPartyComputa
 const DifferentialPrivacyService = require('../services/differentialPrivacyService');
 const ModelValidationService = require('../services/modelValidationService');
 const FederatedLearningAnalytics = require('../services/federatedLearningAnalytics');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
 
 // Initialize services
 const flCoordinator = new FederatedLearningCoordinator({
@@ -54,37 +56,52 @@ const analyticsService = new FederatedLearningAnalytics({
   maxDataPoints: 1000
 });
 
-// Middleware for request validation
-const validateRequest = (req, res, next) => {
-  try {
-    // Basic validation
-    if (!req.body && req.method !== 'GET') {
-      return res.status(400).json({
-        success: false,
-        message: 'Request body is required'
-      });
-    }
-    next();
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: 'Invalid request format',
-      error: error.message
-    });
-  }
+// Validation schemas
+const initializeSchema = {
+  body: Joi.object({
+    modelArchitecture: Joi.string().trim().min(1).max(500).required(),
+    hyperparameters: Joi.object().optional(),
+  })
+};
+
+const registerParticipantSchema = {
+  body: Joi.object({
+    institutionId: Joi.string().trim().min(1).required(),
+    publicKey: Joi.string().trim().min(1).max(1024).required(),
+    metadata: Joi.object().optional(),
+  })
+};
+
+const startRoundSchema = {
+  body: Joi.object({
+    modelVersion: Joi.string().optional(),
+    roundConfig: Joi.object({
+      numRounds: Joi.number().integer().min(1).optional(),
+      batchSize: Joi.number().integer().min(1).optional(),
+      learningRate: Joi.number().positive().optional(),
+    }).optional(),
+  })
+};
+
+const submitUpdateSchema = {
+  params: Joi.object({
+    roundId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    participantId: Joi.string().trim().min(1).required(),
+    modelUpdate: Joi.object({
+      weights: Joi.object().required(),
+      gradients: Joi.array().optional(),
+      metrics: Joi.object().optional(),
+    }).required(),
+    signature: Joi.string().trim().min(1).required(),
+  })
 };
 
 // Initialize federated learning system
-router.post('/initialize', async (req, res) => {
+router.post('/initialize', validateRequestSchema(initializeSchema), async (req, res) => {
   try {
     const { modelArchitecture } = req.body;
-    
-    if (!modelArchitecture) {
-      return res.status(400).json({
-        success: false,
-        message: 'Model architecture is required'
-      });
-    }
 
     await flCoordinator.initialize(modelArchitecture);
     
@@ -111,16 +128,9 @@ router.post('/initialize', async (req, res) => {
 });
 
 // Register participant institution
-router.post('/participants/register', validateRequest, async (req, res) => {
+router.post('/participants/register', validateRequestSchema(registerParticipantSchema), async (req, res) => {
   try {
     const { institutionId, publicKey, metadata } = req.body;
-    
-    if (!institutionId || !publicKey) {
-      return res.status(400).json({
-        success: false,
-        message: 'Institution ID and public key are required'
-      });
-    }
 
     const participant = flCoordinator.registerParticipant(institutionId, publicKey, metadata);
     
@@ -160,7 +170,7 @@ router.get('/participants', (req, res) => {
 });
 
 // Start new federated learning round
-router.post('/rounds/start', validateRequest, async (req, res) => {
+router.post('/rounds/start', validateRequestSchema(startRoundSchema), async (req, res) => {
   try {
     const roundConfig = req.body;
     
@@ -182,17 +192,10 @@ router.post('/rounds/start', validateRequest, async (req, res) => {
 });
 
 // Submit model update from participant
-router.post('/rounds/:roundId/updates', validateRequest, async (req, res) => {
+router.post('/rounds/:roundId/updates', validateRequestSchema(submitUpdateSchema), async (req, res) => {
   try {
     const { roundId } = req.params;
     const { participantId, modelUpdate, signature } = req.body;
-    
-    if (!participantId || !modelUpdate || !signature) {
-      return res.status(400).json({
-        success: false,
-        message: 'Participant ID, model update, and signature are required'
-      });
-    }
 
     const result = await flCoordinator.receiveModelUpdate(participantId, modelUpdate, signature);
     

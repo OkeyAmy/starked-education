@@ -6,6 +6,31 @@ const { authenticateToken: auth } = require('../middleware/auth');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
+
+const offlineRequestSchema = {
+  body: Joi.object({
+    contentId: Joi.string().trim().min(1).required(),
+    deviceId: Joi.string().trim().min(1).required(),
+    quality: Joi.string().valid('low', 'medium', 'high', 'original').optional(),
+  })
+};
+
+const updateProgressSchema = {
+  params: Joi.object({
+    offlineId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    progress: Joi.number().min(0).max(100).optional(),
+    fileData: Joi.object({
+      type: Joi.string().required(),
+      localPath: Joi.string().required(),
+      size: Joi.number().min(0),
+      checksum: Joi.string().optional(),
+    }).optional(),
+  }).min(1)
+};
 
 // Get all offline content for a user
 router.get('/', auth, async (req, res) => {
@@ -30,7 +55,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Request content for offline download
-router.post('/request', auth, async (req, res) => {
+router.post('/request', auth, validateRequestSchema(offlineRequestSchema), async (req, res) => {
   try {
     const { contentId, deviceId, quality = 'medium' } = req.body;
     
@@ -80,7 +105,7 @@ router.post('/request', auth, async (req, res) => {
 });
 
 // Update download progress
-router.put('/:offlineId/progress', auth, async (req, res) => {
+router.put('/:offlineId/progress', auth, validateRequestSchema(updateProgressSchema), async (req, res) => {
   try {
     const { progress, fileData } = req.body;
     

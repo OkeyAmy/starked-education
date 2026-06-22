@@ -4,6 +4,39 @@ const { readLimiter, searchWriteLimiter } = require('../middleware/rateLimiter')
 
 const createSearchRouter = (service = discoveryService) => {
     const router = express.Router();
+    const Joi = require('joi');
+    const { validateRequestSchema } = require('../middleware/validateRequestSchema');
+
+    const voiceSearchSchema = {
+      body: Joi.object({
+        transcript: Joi.string().trim().min(1).max(5000).optional(),
+        query: Joi.string().trim().min(1).max(5000).optional(),
+        filters: Joi.object().optional(),
+        userId: Joi.string().trim().optional(),
+        sessionId: Joi.string().trim().optional(),
+      }).min(1)
+    };
+
+    const saveSearchSchema = {
+      body: Joi.object({
+        userId: Joi.string().trim().optional(),
+        sessionId: Joi.string().trim().optional(),
+      })
+    };
+
+    const createAlertSchema = {
+      body: Joi.object({
+        userId: Joi.string().trim().optional(),
+        sessionId: Joi.string().trim().optional(),
+      })
+    };
+
+    const clickSchema = {
+      body: Joi.object({
+        userId: Joi.string().trim().optional(),
+        sessionId: Joi.string().trim().optional(),
+      })
+    };
 
     router.get('/', readLimiter, (req, res) => {
         try {
@@ -30,7 +63,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.post('/voice', searchWriteLimiter, (req, res) => {
+    router.post('/voice', searchWriteLimiter, validateRequestSchema(voiceSearchSchema), (req, res) => {
         try {
             const normalizedQuery = service.normalizeVoiceQuery(req.body.transcript || req.body.query || '');
             const result = service.search({
@@ -112,7 +145,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.post('/saved-searches', searchWriteLimiter, (req, res) => {
+    router.post('/saved-searches', searchWriteLimiter, validateRequestSchema(saveSearchSchema), (req, res) => {
         try {
             const item = service.saveSearch(req.body.userId, req.body.sessionId, req.body);
             res.status(201).json({ success: true, data: item });
@@ -130,7 +163,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.post('/alerts', searchWriteLimiter, (req, res) => {
+    router.post('/alerts', searchWriteLimiter, validateRequestSchema(createAlertSchema), (req, res) => {
         try {
             const item = service.createAlert(req.body.userId, req.body.sessionId, req.body);
             res.status(201).json({ success: true, data: item });
@@ -139,7 +172,7 @@ const createSearchRouter = (service = discoveryService) => {
         }
     });
 
-    router.post('/click', searchWriteLimiter, (req, res) => {
+    router.post('/click', searchWriteLimiter, validateRequestSchema(clickSchema), (req, res) => {
         try {
             const data = service.recordClick(req.body.userId, req.body.sessionId, req.body);
             res.status(201).json({ success: true, data });

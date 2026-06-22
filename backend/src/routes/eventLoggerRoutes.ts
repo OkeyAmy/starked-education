@@ -1,17 +1,20 @@
 import { Router } from "express";
 import { eventLoggerController } from "../controllers/eventLoggerController";
+import { validateRequestSchema } from "../middleware/validateRequestSchema";
+import { logCourseCompletionSchema, logCredentialIssuanceSchema, logUserAchievementSchema, logProfileUpdateSchema, logCourseEnrollmentSchema } from "../middleware/validation";
 
 const router: Router = Router();
 
 // Event logging endpoints
-router.post("/course-completion", eventLoggerController.logCourseCompletion);
+router.post("/course-completion", validateRequestSchema(logCourseCompletionSchema), eventLoggerController.logCourseCompletion);
 router.post(
   "/credential-issuance",
+  validateRequestSchema(logCredentialIssuanceSchema),
   eventLoggerController.logCredentialIssuance,
 );
-router.post("/user-achievement", eventLoggerController.logUserAchievement);
-router.post("/profile-update", eventLoggerController.logProfileUpdate);
-router.post("/course-enrollment", eventLoggerController.logCourseEnrollment);
+router.post("/user-achievement", validateRequestSchema(logUserAchievementSchema), eventLoggerController.logUserAchievement);
+router.post("/profile-update", validateRequestSchema(logProfileUpdateSchema), eventLoggerController.logProfileUpdate);
+router.post("/course-enrollment", validateRequestSchema(logCourseEnrollmentSchema), eventLoggerController.logCourseEnrollment);
 
 // Event retrieval endpoints
 router.get("/event/:eventId", eventLoggerController.getEventById);

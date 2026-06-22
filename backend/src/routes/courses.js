@@ -7,26 +7,62 @@ const express = require('express');
 const router = express.Router();
 const { readLimiter, courseWriteLimiter } = require('../middleware/rateLimiter');
 
-// Import middleware (will be available after TypeScript compilation)
-// const { 
-//   validateContentVersionCreation,
-//   validateContentVersionUpdate,
-//   validateVersionRestore,
-//   validateVersionComparison,
-//   validateVersionHistoryQuery,
-//   validateVersionControlSettings,
-//   validateVersionExport,
-//   validateContentIdParam,
-//   validateVersionIdParam,
-//   validateVersionNumberParam,
-//   checkVersionManagementPermission,
-//   checkVersionRestorePermission,
-//   validateDateRange,
-//   handleValidationErrors
-// } = require('../middleware/validation');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
 
-// Import services (will be available after TypeScript compilation)
-// const VersionControlService = require('../utils/versionControl');
+const contentIdParamSchema = {
+  params: Joi.object({
+    contentId: Joi.string().trim().min(1).required(),
+  })
+};
+
+const createVersionSchema = {
+  params: Joi.object({
+    contentId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    title: Joi.string().trim().min(3).max(200).required(),
+    description: Joi.string().trim().min(10).max(1000).required(),
+    content: Joi.object().required(),
+    changes: Joi.array().items(Joi.string().min(5).max(500)).min(1).required(),
+    createdBy: Joi.string().trim().min(1).required(),
+  })
+};
+
+const restoreVersionSchema = {
+  params: Joi.object({
+    contentId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    versionId: Joi.string().trim().min(1).required(),
+    restoreReason: Joi.string().trim().min(5).max(500).optional(),
+    restoredBy: Joi.string().trim().min(1).required(),
+  })
+};
+
+const updateVersionSettingsSchema = {
+  params: Joi.object({
+    contentId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    autoVersioning: Joi.boolean().optional(),
+    maxVersions: Joi.number().integer().min(0).optional(),
+  }).min(1)
+};
+
+const compareVersionsSchema = {
+  params: Joi.object({
+    version1Id: Joi.string().trim().min(1).required(),
+    version2Id: Joi.string().trim().min(1).required(),
+  })
+};
+
+const versionNumberParamSchema = {
+  params: Joi.object({
+    contentId: Joi.string().trim().min(1).required(),
+    versionNumber: Joi.number().integer().min(1).required(),
+  })
+};
 
 /**
  * POST /api/courses/:contentId/versions
@@ -48,10 +84,7 @@ const { readLimiter, courseWriteLimiter } = require('../middleware/rateLimiter')
  */
 router.post('/:contentId/versions', 
   courseWriteLimiter,
-  // validateContentIdParam,
-  // validateContentVersionCreation,
-  // checkVersionManagementPermission,
-  // handleValidationErrors,
+  validateRequestSchema(createVersionSchema),
   async (req, res) => {
     try {
       const { contentId } = req.params;
@@ -105,10 +138,7 @@ router.post('/:contentId/versions',
  */
 router.get('/:contentId/versions',
   readLimiter,
-  // validateContentIdParam,
-  // validateVersionHistoryQuery,
-  // validateDateRange,
-  // handleValidationErrors,
+  validateRequestSchema(contentIdParamSchema),
   async (req, res) => {
     try {
       const { contentId } = req.params;
@@ -180,8 +210,7 @@ router.get('/:contentId/versions',
  */
 router.get('/:contentId/versions/current',
   readLimiter,
-  // validateContentIdParam,
-  // handleValidationErrors,
+  validateRequestSchema(contentIdParamSchema),
   async (req, res) => {
     try {
       const { contentId } = req.params;
@@ -232,9 +261,7 @@ router.get('/:contentId/versions/current',
  */
 router.get('/:contentId/versions/:versionNumber',
   readLimiter,
-  // validateContentIdParam,
-  // validateVersionNumberParam,
-  // handleValidationErrors,
+  validateRequestSchema(versionNumberParamSchema),
   async (req, res) => {
     try {
       const { contentId, versionNumber } = req.params;
@@ -285,8 +312,7 @@ router.get('/:contentId/versions/:versionNumber',
  */
 router.post('/versions/compare/:version1Id/:version2Id',
   courseWriteLimiter,
-  // validateVersionComparison,
-  // handleValidationErrors,
+  validateRequestSchema(compareVersionsSchema),
   async (req, res) => {
     try {
       const { version1Id, version2Id } = req.params;
@@ -365,10 +391,7 @@ router.post('/versions/compare/:version1Id/:version2Id',
  */
 router.post('/:contentId/versions/restore',
   courseWriteLimiter,
-  // validateContentIdParam,
-  // validateVersionRestore,
-  // checkVersionRestorePermission,
-  // handleValidationErrors,
+  validateRequestSchema(restoreVersionSchema),
   async (req, res) => {
     try {
       const { contentId } = req.params;
@@ -427,10 +450,7 @@ router.post('/:contentId/versions/restore',
  */
 router.put('/:contentId/versions/settings',
   courseWriteLimiter,
-  // validateContentIdParam,
-  // validateVersionControlSettings,
-  // checkVersionManagementPermission,
-  // handleValidationErrors,
+  validateRequestSchema(updateVersionSettingsSchema),
   async (req, res) => {
     try {
       const { contentId } = req.params;
@@ -477,9 +497,7 @@ router.put('/:contentId/versions/settings',
  */
 router.get('/:contentId/versions/export',
   readLimiter,
-  // validateContentIdParam,
-  // validateVersionExport,
-  // handleValidationErrors,
+  validateRequestSchema(contentIdParamSchema),
   async (req, res) => {
     try {
       const { contentId } = req.params;
@@ -540,8 +558,7 @@ router.get('/:contentId/versions/export',
  */
 router.get('/:contentId/versions/statistics',
   readLimiter,
-  // validateContentIdParam,
-  // handleValidationErrors,
+  validateRequestSchema(contentIdParamSchema),
   async (req, res) => {
     try {
       const { contentId } = req.params;

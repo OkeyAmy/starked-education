@@ -6,6 +6,15 @@ const { PERMISSIONS } = require('../utils/roles');
 // Assuming we have a standard auth middleware already to populate req.user
 // For now, using a placeholder requirement
 const { verifyToken } = require('../middleware/ipfsAuth');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
+
+const assignRoleSchema = {
+  body: Joi.object({
+    userId: Joi.string().trim().min(1).required(),
+    role: Joi.string().valid('student', 'educator', 'institution', 'admin', 'superadmin').required(),
+  })
+};
 
 /**
  * Placeholder auth middleware for RBAC routes
@@ -38,6 +47,7 @@ router.post('/assign-role',
   rbacAuth,
   requirePermission(PERMISSIONS.USER_ASSIGN_ROLE),
   protectRoleEscalation,
+  validateRequestSchema(assignRoleSchema),
   rbacController.assignRole
 );
 

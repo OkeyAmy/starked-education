@@ -3,6 +3,8 @@ import quizController from "../controllers/quizController";
 import { requirePermission } from "../middleware/rbac";
 import { PERMISSIONS } from "../utils/roles";
 import { asyncHandler } from "../middleware/errorHandler";
+import { validateRequestSchema } from "../middleware/validateRequestSchema";
+import { createQuizSchema, updateQuizSchema, submitQuizSchema, toggleQuizPublishSchema, regradeSubmissionSchema } from "../middleware/validation";
 
 const router: Router = Router();
 
@@ -13,6 +15,7 @@ const wrap = (fn: any) => asyncHandler(fn.bind(quizController));
 router.post(
   "/",
   requirePermission(PERMISSIONS.QUIZ_CREATE),
+  validateRequestSchema(createQuizSchema),
   wrap(quizController.createQuiz),
 );
 router.get(
@@ -28,6 +31,7 @@ router.get(
 router.put(
   "/:id",
   requirePermission(PERMISSIONS.QUIZ_UPDATE),
+  validateRequestSchema(updateQuizSchema),
   wrap(quizController.updateQuiz),
 );
 router.delete(
@@ -40,6 +44,7 @@ router.delete(
 router.post(
   "/:id/publish",
   requirePermission(PERMISSIONS.QUIZ_UPDATE),
+  validateRequestSchema(toggleQuizPublishSchema),
   wrap(quizController.toggleQuizPublish),
 );
 
@@ -47,6 +52,7 @@ router.post(
 router.post(
   "/:id/submit",
   requirePermission(PERMISSIONS.PROGRESS_TRACK),
+  validateRequestSchema(submitQuizSchema),
   wrap(quizController.submitQuiz),
 );
 router.get(
@@ -79,6 +85,7 @@ router.get(
 router.post(
   "/submissions/:submissionId/regrade",
   requirePermission(PERMISSIONS.COURSE_GRADE),
+  validateRequestSchema(regradeSubmissionSchema),
   wrap(quizController.regradeSubmission),
 );
 

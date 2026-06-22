@@ -1,67 +1,90 @@
 const express = require('express');
 const router = express.Router();
 const PredictionController = require('../controllers/predictionController');
+const Joi = require('joi');
+const { validateRequestSchema } = require('../middleware/validateRequestSchema');
 
 // Initialize controller
 const predictionController = new PredictionController();
 
-// Middleware for validation
-const validateStudentData = (req, res, next) => {
-  const { studentData } = req.body;
-  
-  if (!studentData || typeof studentData !== 'object') {
-    return res.status(400).json({
-      success: false,
-      message: 'Valid student data object is required'
-    });
-  }
-  
-  next();
+const studentPredictSchema = {
+  params: Joi.object({
+    studentId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    studentData: Joi.object().required(),
+  })
 };
 
-const validateBatchData = (req, res, next) => {
-  const { students } = req.body;
-  
-  if (!students || !Array.isArray(students) || students.length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: 'Valid students array is required'
-    });
-  }
-  
-  if (students.length > 100) {
-    return res.status(400).json({
-      success: false,
-      message: 'Maximum 100 students allowed per batch request'
-    });
-  }
-  
-  next();
+const batchPredictSchema = {
+  body: Joi.object({
+    students: Joi.array().min(1).max(100).required(),
+  })
+};
+
+const interventionSchema = {
+  params: Joi.object({
+    studentId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    riskFactors: Joi.array().items(Joi.object()).optional(),
+    preferences: Joi.object().optional(),
+  })
+};
+
+const interventionStatusSchema = {
+  params: Joi.object({
+    studentId: Joi.string().trim().min(1).required(),
+    interventionId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    status: Joi.string().valid('pending', 'active', 'completed', 'cancelled').required(),
+    notes: Joi.string().optional(),
+  })
+};
+
+const learningPathOptimizeSchema = {
+  params: Joi.object({
+    studentId: Joi.string().trim().min(1).required(),
+  }),
+  body: Joi.object({
+    currentPath: Joi.array().optional(),
+    goals: Joi.object().optional(),
+  })
+};
+
+const trainModelsSchema = {
+  body: Joi.object({
+    modelType: Joi.string().valid('all', 'performance', 'risk', 'intervention').optional(),
+    forceRetrain: Joi.boolean().optional(),
+  })
 };
 
 // Prediction routes
 router.post('/students/:studentId/predict', 
-  validateStudentData,
+  validateRequestSchema(studentPredictSchema),
   predictionController.predictStudentOutcomes.bind(predictionController)
 );
 
 router.post('/batch/predict',
-  validateBatchData,
+  validateRequestSchema(batchPredictSchema),
   predictionController.predictBatchOutcomes.bind(predictionController)
 );
 
 // At-risk student identification
 router.post('/at-risk/identify',
-  validateBatchData,
+  validateRequestSchema(batchPredictSchema),
   predictionController.identifyAtRiskStudents.bind(predictionController)
 );
 
 // Intervention recommendations
 router.post('/students/:studentId/interventions',
+  validateRequestSchema(interventionSchema),
   predictionController.generateInterventions.bind(predictionController)
 );
 
 router.put('/students/:studentId/interventions/:interventionId/status',
+  validateRequestSchema(interventionStatusSchema),
   predictionController.updateInterventionStatus.bind(predictionController)
 );
 
@@ -71,6 +94,7 @@ router.get('/students/:studentId/interventions/effectiveness',
 
 // Learning path optimization
 router.post('/students/:studentId/learning-path/optimize',
+  validateRequestSchema(learningPathOptimizeSchema),
   predictionController.optimizeLearningPath.bind(predictionController)
 );
 
@@ -80,12 +104,13 @@ router.get('/models/accuracy',
 );
 
 router.post('/models/train',
+  validateRequestSchema(trainModelsSchema),
   predictionController.trainModels.bind(predictionController)
 );
 
 // Comprehensive analytics
 router.post('/students/:studentId/analytics',
-  validateStudentData,
+  validateRequestSchema(studentPredictSchema),
   predictionController.getStudentAnalytics.bind(predictionController)
 );
 
