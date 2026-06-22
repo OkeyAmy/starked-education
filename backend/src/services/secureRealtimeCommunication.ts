@@ -97,6 +97,8 @@ export class SecureRealtimeCommunication {
       socket.on('disconnect', () => {
         this.handleDisconnection(socket);
       });
+
+
     });
   }
 
@@ -395,6 +397,17 @@ export class SecureRealtimeCommunication {
       console.error('Error rotating session key:', error);
       socket.emit('error', { message: 'Failed to rotate session key' });
     }
+  }
+
+  /**
+   * Validates sequence consistency for clients re-establishing synchronization.
+   * Prevents corrupted state playback assertions.
+   */
+  public static validateSequenceOffset(clientOffset: number, calculatedMaxServerOffset: number): boolean {
+    if (clientOffset < 0 || clientOffset > calculatedMaxServerOffset) {
+      return false;
+    }
+    return true;
   }
 
   /**
