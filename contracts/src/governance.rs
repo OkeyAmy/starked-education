@@ -1,5 +1,11 @@
 use soroban_sdk::{contracttype, Address, Env, String};
 
+pub const MAX_PROPOSAL_TITLE_BYTES: u32 = 200;
+pub const MAX_PROPOSAL_DESCRIPTION_BYTES: u32 = 2000;
+pub const MIN_VOTING_PERIOD: u64 = 300;
+pub const MAX_VOTING_PERIOD: u64 = 30 * 24 * 60 * 60;
+pub const DUPLICATE_PROPOSAL_COOLDOWN: u64 = 24 * 60 * 60;
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ProposalStatus {
@@ -77,6 +83,7 @@ pub enum GovernanceDataKey {
     GovernanceToken,
     QuorumThreshold,
     VotingPeriod,
+    ProposalByProposerTitle(Address, String),
     TimelockDelay,
     ReputationMultiplier,
     Delegate(Address),
@@ -110,6 +117,7 @@ impl Governance {
         quorum: i128,
     ) -> u64 {
         proposer.require_auth();
+        Self::validate_proposal(&env, proposer.clone(), title.clone(), description.clone(), voting_period);
         let count: u64 = env.storage().instance()
             .get(&GovernanceDataKey::ProposalCount)
             .unwrap_or(0);
@@ -117,8 +125,8 @@ impl Governance {
         let start_time = env.ledger().timestamp();
         let proposal = Proposal {
             id,
-            proposer,
-            title,
+            proposer: proposer.clone(),
+            title: title.clone(),
             description,
             start_time,
             end_time: start_time + voting_period,
@@ -131,6 +139,10 @@ impl Governance {
         };
         env.storage().instance().set(&GovernanceDataKey::Proposal(id), &proposal);
         env.storage().instance().set(&GovernanceDataKey::ProposalCount, &id);
+        env.storage().instance().set(
+            &GovernanceDataKey::ProposalByProposerTitle(proposer, title),
+            &start_time,
+        );
         id
     }
 
@@ -406,6 +418,36 @@ impl Governance {
                 let mut s = scholarship;
                 s.returned_to_treasury = true;
                 env.storage().instance().set(&GovernanceDataKey::Scholarship(proposal_id), &s);
+            }
+        }
+    }
+
+    fn validate_proposal(
+        env: &Env,
+        proposer: Address,
+        title: String,
+        description: String,
+        voting_period: u64,
+    ) {
+        if title.len() == 0 {
+            panic!("InvalidTitle: title must be non-empty");
+        }
+        if title.len() > MAX_PROPOSAL_TITLE_BYTES {
+            panic!("InvalidTitle: title exceeds 200 bytes");
+        }
+        if description.len() > MAX_PROPOSAL_DESCRIPTION_BYTES {
+            panic!("InvalidDescription: description exceeds 2000 bytes");
+        }
+        if voting_period < MIN_VOTING_PERIOD || voting_period > MAX_VOTING_PERIOD {
+            panic!("InvalidVotingPeriod: voting period out of bounds");
+        }
+
+        if let Some(last_created_at) = env.storage().instance()
+            .get::<_, u64>(&GovernanceDataKey::ProposalByProposerTitle(proposer, title))
+        {
+            let now = env.ledger().timestamp();
+            if now.saturating_sub(last_created_at) < DUPLICATE_PROPOSAL_COOLDOWN {
+                panic!("DuplicateProposal: proposer submitted same title within cooldown");
             }
         }
     }

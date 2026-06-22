@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use soroban_sdk::{testutils::Address as _, Address, Env, String};
+use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env, String};
 
 use crate::governance::{
     EligibilityCriteria, Governance, GovernanceDataKey, ProposalStatus, ScholarshipProposal,
@@ -34,7 +34,145 @@ fn advance(env: &Env, secs: u64) {
     env.ledger().with_mut(|l| l.timestamp += secs);
 }
 
+fn create_valid_proposal(env: &Env, proposer: Address, title: &str) -> u64 {
+    Governance::create_proposal(
+        env.clone(),
+        proposer,
+        String::from_str(env, title),
+        String::from_str(env, "Fund CS students"),
+        3600,
+        10,
+    )
+}
+
 // ── tests ─────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_create_proposal_with_valid_input() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (proposer, _, _) = setup(&env);
+
+    let pid = create_valid_proposal(&env, proposer, "CS Scholarship");
+
+    assert_eq!(pid, 1);
+    let proposal: crate::governance::Proposal = env
+        .storage()
+        .instance()
+        .get(&GovernanceDataKey::Proposal(pid))
+        .unwrap();
+    assert_eq!(proposal.title, String::from_str(&env, "CS Scholarship"));
+}
+
+#[test]
+#[should_panic(expected = "InvalidTitle: title must be non-empty")]
+fn test_create_proposal_rejects_empty_title() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (proposer, _, _) = setup(&env);
+
+    Governance::create_proposal(
+        env.clone(),
+        proposer,
+        String::from_str(&env, ""),
+        String::from_str(&env, "Fund CS students"),
+        3600,
+        10,
+    );
+}
+
+#[test]
+#[should_panic(expected = "InvalidTitle: title exceeds 200 bytes")]
+fn test_create_proposal_rejects_title_over_200_bytes() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (proposer, _, _) = setup(&env);
+
+    Governance::create_proposal(
+        env.clone(),
+        proposer,
+        String::from_str(&env, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+        String::from_str(&env, "Fund CS students"),
+        3600,
+        10,
+    );
+}
+
+#[test]
+#[should_panic(expected = "InvalidDescription: description exceeds 2000 bytes")]
+fn test_create_proposal_rejects_description_over_2000_bytes() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (proposer, _, _) = setup(&env);
+
+    Governance::create_proposal(
+        env.clone(),
+        proposer,
+        String::from_str(&env, "CS Scholarship"),
+        String::from_str(&env, "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"),
+        3600,
+        10,
+    );
+}
+
+#[test]
+#[should_panic(expected = "InvalidVotingPeriod: voting period out of bounds")]
+fn test_create_proposal_rejects_short_voting_period() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (proposer, _, _) = setup(&env);
+
+    Governance::create_proposal(
+        env.clone(),
+        proposer,
+        String::from_str(&env, "CS Scholarship"),
+        String::from_str(&env, "Fund CS students"),
+        299,
+        10,
+    );
+}
+
+#[test]
+#[should_panic(expected = "InvalidVotingPeriod: voting period out of bounds")]
+fn test_create_proposal_rejects_long_voting_period() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (proposer, _, _) = setup(&env);
+
+    Governance::create_proposal(
+        env.clone(),
+        proposer,
+        String::from_str(&env, "CS Scholarship"),
+        String::from_str(&env, "Fund CS students"),
+        30 * 24 * 60 * 60 + 1,
+        10,
+    );
+}
+
+#[test]
+#[should_panic(expected = "DuplicateProposal: proposer submitted same title within cooldown")]
+fn test_create_proposal_rejects_duplicate_title_within_cooldown() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (proposer, _, _) = setup(&env);
+
+    create_valid_proposal(&env, proposer.clone(), "CS Scholarship");
+    create_valid_proposal(&env, proposer, "CS Scholarship");
+}
+
+#[test]
+fn test_create_proposal_allows_duplicate_title_after_cooldown() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (proposer, _, _) = setup(&env);
+
+    let first = create_valid_proposal(&env, proposer.clone(), "CS Scholarship");
+    advance(&env, 24 * 60 * 60);
+    let second = create_valid_proposal(&env, proposer, "CS Scholarship");
+
+    assert_eq!(first, 1);
+    assert_eq!(second, 2);
+}
 
 /// 1. Create a scholarship proposal and verify it is stored correctly.
 #[test]
