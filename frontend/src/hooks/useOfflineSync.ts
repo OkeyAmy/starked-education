@@ -38,7 +38,7 @@ export const useOfflineSync = (options: OfflineSyncOptions = {}) => {
   } = options;
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
-    isOnline: navigator.onLine,
+    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
     isSyncing: false,
     queuedItems: 0,
     syncErrors: []
@@ -51,6 +51,19 @@ export const useOfflineSync = (options: OfflineSyncOptions = {}) => {
   // Load queue from storage on mount
   useEffect(() => {
     loadQueueFromStorage();
+  }, []);
+
+  // Listen for service-worker messages so we can refresh the queue
+  // when the BackgroundSync plugin drains pending POSTs.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const handler = (event: MessageEvent) => {
+      if (event?.data?.type === 'OFFLINE_QUEUE_DRAINED') {
+        loadQueueFromStorage();
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handler);
+    return () => navigator.serviceWorker.removeEventListener('message', handler);
   }, []);
 
   // Monitor online/offline status
@@ -134,10 +147,10 @@ export const useOfflineSync = (options: OfflineSyncOptions = {}) => {
   const openIndexedDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open('StarkEdOfflineSync', 1);
-      
+
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
-      
+
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         if (!db.objectStoreNames.contains('syncQueue')) {
@@ -153,7 +166,7 @@ export const useOfflineSync = (options: OfflineSyncOptions = {}) => {
       const transaction = db.transaction(['syncQueue'], 'readonly');
       const store = transaction.objectStore('syncQueue');
       const request = store.getAll();
-      
+
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result || []);
     });
@@ -164,15 +177,15 @@ export const useOfflineSync = (options: OfflineSyncOptions = {}) => {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['syncQueue'], 'readwrite');
       const store = transaction.objectStore('syncQueue');
-      
+
       // Clear existing items
       store.clear();
-      
+
       // Add new items
       items.forEach(item => {
         store.add(item);
       });
-      
+
       transaction.onerror = () => reject(transaction.error);
       transaction.oncomplete = () => resolve();
     });
@@ -232,10 +245,10 @@ export const useOfflineSync = (options: OfflineSyncOptions = {}) => {
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           errors.push(`Failed to sync ${item.type} to ${item.endpoint}: ${errorMessage}`);
-          
+
           // Increment retry count
           item.retryCount++;
-          
+
           // Remove item if max retries exceeded
           if (item.retryCount >= maxRetries) {
             processedItems.push(item.id);
@@ -253,7 +266,7 @@ export const useOfflineSync = (options: OfflineSyncOptions = {}) => {
         lastSyncTime: new Date(),
         syncErrors: errors
       }));
-      
+
       await saveQueueToStorage(updatedQueue);
 
     } catch (error) {
@@ -342,10 +355,95 @@ export const useOfflineSync = (options: OfflineSyncOptions = {}) => {
   };
 };
 
+// ---------------------------------------------------------------------------
+// Storage quota monitoring — issued by the OfflineIndicator once usage
+// crosses 80% so the UI can warn the student.
+// ---------------------------------------------------------------------------
+export interface StorageQuotaState {
+  usage: number;
+  quota: number;
+  percent: number;
+  isHighUsage: boolean;            // >= 80%
+  isCritical: boolean;             // >= 95%
+  isPersistent: boolean;
+  isSupported: boolean;
+}
+
+const DEFAULT_STATE: StorageQuotaState = {
+  usage: 0,
+  quota: 0,
+  percent: 0,
+  isHighUsage: false,
+  isCritical: false,
+  isPersistent: false,
+  isSupported:
+    typeof navigator !== 'undefined' &&
+    typeof navigator.storage !== 'undefined' &&
+    typeof navigator.storage.estimate === 'function',
+};
+
+export const useStorageQuota = (
+  pollIntervalMs = 60_000,
+  warningThreshold = 0.8,
+  criticalThreshold = 0.95
+): StorageQuotaState => {
+  const [state, setState] = useState<StorageQuotaState>(DEFAULT_STATE);
+
+  const refresh = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.storage?.estimate) {
+      return;
+    }
+    try {
+      const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+      const percent = quota > 0 ? usage / quota : 0;
+
+      let isPersistent = false;
+      if (navigator.storage?.persisted) {
+        try {
+          isPersistent = await navigator.storage.persisted();
+        } catch (_) {
+          isPersistent = false;
+        }
+      }
+
+      setState({
+        usage,
+        quota,
+        percent,
+        isHighUsage: percent >= warningThreshold,
+        isCritical: percent >= criticalThreshold,
+        isPersistent,
+        isSupported: true,
+      });
+    } catch (err) {
+      console.warn('Failed to read storage quota:', err);
+    }
+  }, [warningThreshold, criticalThreshold]);
+
+  useEffect(() => {
+    refresh();
+    if (!pollIntervalMs) return;
+    const interval = setInterval(refresh, pollIntervalMs);
+    window.addEventListener('online', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [pollIntervalMs, refresh]);
+
+  return state;
+};
+
+// ---------------------------------------------------------------------------
 // Hook for offline data management
+// ---------------------------------------------------------------------------
 export const useOfflineData = <T>(key: string, initialValue?: T) => {
   const [data, setData] = useState<T | undefined>(initialValue);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isOffline, setIsOffline] = useState(
+    typeof navigator === 'undefined' ? false : !navigator.onLine
+  );
 
   useEffect(() => {
     // Load data from storage
@@ -386,7 +484,7 @@ export const useOfflineData = <T>(key: string, initialValue?: T) => {
   const saveData = useCallback(async (newData: T) => {
     try {
       setData(newData);
-      
+
       if ('indexedDB' in window) {
         const db = await openDataDB();
         await saveDataToIndexedDB(db, key, newData);
@@ -401,7 +499,7 @@ export const useOfflineData = <T>(key: string, initialValue?: T) => {
   const clearData = useCallback(async () => {
     try {
       setData(undefined);
-      
+
       if ('indexedDB' in window) {
         const db = await openDataDB();
         await deleteDataFromIndexedDB(db, key);
@@ -421,14 +519,16 @@ export const useOfflineData = <T>(key: string, initialValue?: T) => {
   };
 };
 
-// Helper functions for data management
+// ---------------------------------------------------------------------------
+// Helpers for offline-data IndexedDB
+// ---------------------------------------------------------------------------
 const openDataDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('StarkEdOfflineData', 1);
-    
+
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
-    
+
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains('data')) {
@@ -443,7 +543,7 @@ const getDataFromIndexedDB = (db: IDBDatabase, key: string): Promise<any> => {
     const transaction = db.transaction(['data'], 'readonly');
     const store = transaction.objectStore('data');
     const request = store.get(key);
-    
+
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result?.value);
   });
@@ -454,7 +554,7 @@ const saveDataToIndexedDB = (db: IDBDatabase, key: string, value: any): Promise<
     const transaction = db.transaction(['data'], 'readwrite');
     const store = transaction.objectStore('data');
     const request = store.put({ key, value });
-    
+
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve();
   });
@@ -465,7 +565,7 @@ const deleteDataFromIndexedDB = (db: IDBDatabase, key: string): Promise<void> =>
     const transaction = db.transaction(['data'], 'readwrite');
     const store = transaction.objectStore('data');
     const request = store.delete(key);
-    
+
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve();
   });

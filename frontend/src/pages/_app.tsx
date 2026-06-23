@@ -6,6 +6,7 @@ import { ThemeProvider } from 'next-themes';
 import nextI18NextConfig from '../../next-i18next.config';
 import { WalletProvider } from '../context/WalletContext';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { GlobalShell } from '../components/PWA/GlobalShell';
 import { Toaster } from 'react-hot-toast';
 import '../styles/globals.css';
 
@@ -43,6 +44,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
             {`Navigated to ${router.asPath}`}
           </div>
+          <GlobalShell />
           <Component {...pageProps} />
           <Toaster
             position="bottom-right"

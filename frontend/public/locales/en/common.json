@@ -94,7 +94,8 @@
     "connected": "Connected",
     "disconnected": "Disconnected",
     "synced": "Synced",
-    "unsynced": "Unsynced"
+    "unsynced": "Unsynced",
+    "syncing": "Syncing…"
   },
   "time": {
     "now": "Now",
@@ -229,6 +230,42 @@
     "confirmDelete": "Are you sure you want to delete this item?",
     "unsavedChanges": "You have unsaved changes",
     "confirmLeave": "Are you sure you want to leave this page?"
+  },
+  "pwa": {
+    "install": {
+      "title": "Install StarkEd",
+      "description": "Install our app for the best experience! Get offline access, faster loading, and push notifications.",
+      "button": "Install App",
+      "notNow": "Not Now",
+      "dismiss": "Dismiss",
+      "platforms": "Available for desktop and mobile",
+      "iosInstructions": "To install StarkEd on your iOS device:\n\n1. Tap the Share button at the bottom of Safari\n2. Scroll down and tap \"Add to Home Screen\"\n3. Tap \"Add\" to confirm installation\n\nThis will add StarkEd to your home screen for easy access!",
+      "iosButton": "Learn How to Install"
+    },
+    "banner": {
+      "message": "Install StarkEd for offline access and notifications",
+      "dismiss": "Dismiss"
+    },
+    "update": {
+      "available": "A new version of StarkEd is available.",
+      "reload": "Reload"
+    },
+    "offline": {
+      "queuedActions": "{{count}} action pending sync will be sent when you reconnect.",
+      "queuedActions_one": "{{count}} action pending sync will be sent when you reconnect.",
+      "queuedActions_other": "{{count}} actions pending sync will be sent when you reconnect.",
+      "syncErrors": "{{count}} sync error",
+      "syncErrors_one": "{{count}} sync error",
+      "syncErrors_other": "{{count}} sync errors",
+      "retrySync": "Retry sync",
+      "storageWarning": "Storage almost full ({{percent}}%). Free up space or clear cached courses to avoid losing offline content.",
+      "cannotDownload": "Cannot download courses while offline.",
+      "downloadFailed": "Download failed. Please try again.",
+      "downloaded": "Downloaded",
+      "downloading": "Downloading {{percent}}%",
+      "downloadCourse": "Download Course",
+      "courseAvailableOffline": "Available for offline study"
+    }
   },
   "accessibility": {
     "skipToContent": "Skip to main content",

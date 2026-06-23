@@ -1,0 +1,91 @@
+{
+  "title": "Messages de validation",
+  "description": "Messages de validation de formulaire et gestion des erreurs",
+  "required": {
+    "field": "Ce champ est requis",
+    "name": "Le nom est requis",
+    "firstName": "Le prénom est requis",
+    "lastName": "Le nom est requis",
+    "username": "Le nom d'utilisateur est requis",
+    "email": "L'e-mail est requis",
+    "password": "Le mot de passe est requis",
+    "confirmPassword": "La confirmation du mot de passe est requise",
+    "currentPassword": "Le mot de passe actuel est requis",
+    "newPassword": "Le nouveau mot de passe est requis",
+    "phone": "Le numéro de téléphone est requis",
+    "address": "L'adresse est requise",
+    "city": "La ville est requise",
+    "country": "Le pays est requis",
+    "zipCode": "Le code postal est requis",
+    "birthDate": "La date de naissance est requise",
+    "title": "Le titre est requis",
+    "description": "La description est requise",
+    "file": "Le fichier est requis",
+    "url": "L'URL est requise",
+    "price": "Le prix est requis",
+    "currency": "La devise est requise"
+  },
+  "format": {
+    "invalid": "Format invalide",
+    "email": "Adresse e-mail invalide",
+    "url": "Format d'URL invalide",
+    "phone": "Numéro de téléphone invalide",
+    "zipCode": "Code postal invalide",
+    "creditCard": "Numéro de carte de crédit invalide",
+    "ipAddress": "Adresse IP invalide",
+    "uuid": "UUID invalide",
+    "json": "Format JSON invalide",
+    "alpha": "Doit contenir uniquement des lettres",
+    "numeric": "Doit contenir uniquement des chiffres",
+    "alphanumeric": "Doit contenir uniquement des lettres et chiffres",
+    "integer": "Doit être un entier",
+    "positive": "Doit être un nombre positif",
+    "url_invalid": "URL invalide"
+  },
+  "length": {
+    "tooShort": "La valeur est trop courte",
+    "tooLong": "La valeur est trop longue",
+    "exactLength": "Doit être exactement {{count}} caractères",
+    "minLength": "Doit contenir au moins {{min}} caractères",
+    "maxLength": "Ne doit pas dépasser {{max}} caractères",
+    "rangeLength": "Doit être entre {{min}} et {{max}} caractères"
+  },
+  "range": {
+    "tooSmall": "La valeur est trop petite",
+    "tooLarge": "La valeur est trop grande",
+    "min": "Doit être au moins {{min}}",
+    "max": "Ne doit pas dépasser {{max}}",
+    "range": "Doit être entre {{min}} et {{max}}",
+    "positive": "Doit être positif",
+    "negative": "Doit être négatif"
+  },
+  "comparison": {
+    "notEqual": "Les valeurs ne doivent pas être égales",
+    "equal": "Les valeurs doivent être égales",
+    "greaterThan": "Doit être supérieur à {{field}}",
+    "lessThan": "Doit être inférieur à {{field}}",
+    "before": "Doit être avant {{field}}",
+    "after": "Doit être après {{field}}"
+  },
+  "uniqueness": {
+    "duplicate": "La valeur existe déjà",
+    "unique": "La valeur doit être unique",
+    "emailExists": "Cet e-mail existe déjà",
+    "usernameExists": "Ce nom d'utilisateur existe déjà"
+  },
+  "file": {
+    "required": "Le fichier est requis",
+    "invalid": "Fichier invalide",
+    "tooLarge": "Fichier trop volumineux (max {{maxSize}})",
+    "invalidType": "Type de fichier invalide",
+    "corrupted": "Le fichier est corrompu",
+    "failed": "Échec du téléversement du fichier"
+  },
+  "datetime": {
+    "invalid": "Date/heure invalide",
+    "past": "La date doit être dans le passé",
+    "future": "La date doit être dans le futur",
+    "tooEarly": "La date est trop tôt",
+    "tooLate": "La date est trop tard"
+  }
+}

@@ -94,7 +94,8 @@
     "connected": "Connecté",
     "disconnected": "Déconnecté",
     "synced": "Synchronisé",
-    "unsynced": "Non synchronisé"
+    "unsynced": "Non synchronisé",
+    "syncing": "Synchronisation en cours…"
   },
   "time": {
     "now": "Maintenant",
@@ -229,6 +230,42 @@
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet élément ?",
     "unsavedChanges": "Vous avez des changements non sauvegardés",
     "confirmLeave": "Êtes-vous sûr de vouloir quitter cette page ?"
+  },
+  "pwa": {
+    "install": {
+      "title": "Installer StarkEd",
+      "description": "Installez notre application pour la meilleure expérience ! Obtenez un accès hors ligne, un chargement plus rapide et des notifications push.",
+      "button": "Installer l'application",
+      "notNow": "Pas maintenant",
+      "dismiss": "Ignorer",
+      "platforms": "Disponible pour bureau et mobile",
+      "iosInstructions": "Pour installer StarkEd sur votre appareil iOS :\n\n1. Appuyez sur le bouton Partager en bas de Safari\n2. Faites défiler vers le bas et appuyez sur \"Ajouter à l'écran d'accueil\"\n3. Appuyez sur \"Ajouter\" pour confirmer l'installation\n\nCela ajoutera StarkEd à votre écran d'accueil pour un accès facile !",
+      "iosButton": "Comment installer"
+    },
+    "banner": {
+      "message": "Installez StarkEd pour l'accès hors ligne et les notifications",
+      "dismiss": "Ignorer"
+    },
+    "update": {
+      "available": "Une nouvelle version de StarkEd est disponible.",
+      "reload": "Recharger"
+    },
+    "offline": {
+      "queuedActions": "{{count}} action en attente sera envoyée lorsque vous serez reconnecté.",
+      "queuedActions_one": "{{count}} action en attente sera envoyée lorsque vous serez reconnecté.",
+      "queuedActions_other": "{{count}} actions en attente seront envoyées lorsque vous serez reconnecté.",
+      "syncErrors": "{{count}} erreur de synchronisation",
+      "syncErrors_one": "{{count}} erreur de synchronisation",
+      "syncErrors_other": "{{count}} erreurs de synchronisation",
+      "retrySync": "Réessayer la synchronisation",
+      "storageWarning": "Stockage presque plein ({{percent}}%). Libérez de l'espace ou supprimez les cours en cache pour éviter de perdre du contenu hors ligne.",
+      "cannotDownload": "Impossible de télécharger des cours hors ligne.",
+      "downloadFailed": "Échec du téléchargement. Veuillez réessayer.",
+      "downloaded": "Téléchargé",
+      "downloading": "Téléchargement {{percent}}%",
+      "downloadCourse": "Télécharger le cours",
+      "courseAvailableOffline": "Disponible pour étude hors ligne"
+    }
   },
   "accessibility": {
     "skipToContent": "Aller au contenu principal",

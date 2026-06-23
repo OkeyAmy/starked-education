@@ -94,7 +94,8 @@
     "connected": "Conectado",
     "disconnected": "Desconectado",
     "synced": "Sincronizado",
-    "unsynced": "No Sincronizado"
+    "unsynced": "No Sincronizado",
+    "syncing": "Sincronizando…"
   },
   "time": {
     "now": "Ahora",
@@ -229,6 +230,42 @@
     "confirmDelete": "¿Está seguro de que desea eliminar este elemento?",
     "unsavedChanges": "Tiene cambios no guardados",
     "confirmLeave": "¿Está seguro de que desea abandonar esta página?"
+  },
+  "pwa": {
+    "install": {
+      "title": "Instalar StarkEd",
+      "description": "¡Instala nuestra app para una mejor experiencia! Obtén acceso sin conexión, carga más rápida y notificaciones push.",
+      "button": "Instalar App",
+      "notNow": "Ahora No",
+      "dismiss": "Descartar",
+      "platforms": "Disponible para escritorio y móvil",
+      "iosInstructions": "Para instalar StarkEd en tu dispositivo iOS:\n\n1. Toca el botón Compartir en la parte inferior de Safari\n2. Desplázate hacia abajo y toca \"Añadir a la pantalla de inicio\"\n3. Toca \"Añadir\" para confirmar la instalación\n\n¡Esto añadirá StarkEd a tu pantalla de inicio para un acceso fácil!",
+      "iosButton": "Aprende Cómo Instalar"
+    },
+    "banner": {
+      "message": "Instala StarkEd para acceso sin conexión y notificaciones",
+      "dismiss": "Descartar"
+    },
+    "update": {
+      "available": "Una nueva versión de StarkEd está disponible.",
+      "reload": "Recargar"
+    },
+    "offline": {
+      "queuedActions": "{{count}} acción pendiente se enviará cuando te reconectes.",
+      "queuedActions_one": "{{count}} acción pendiente se enviará cuando te reconectes.",
+      "queuedActions_other": "{{count}} acciones pendientes se enviarán cuando te reconectes.",
+      "syncErrors": "{{count}} error de sincronización",
+      "syncErrors_one": "{{count}} error de sincronización",
+      "syncErrors_other": "{{count}} errores de sincronización",
+      "retrySync": "Reintentar sincronización",
+      "storageWarning": "Almacenamiento casi lleno ({{percent}}%). Libera espacio o borra cursos en caché para evitar perder contenido sin conexión.",
+      "cannotDownload": "No se pueden descargar cursos sin conexión.",
+      "downloadFailed": "Descarga fallida. Por favor inténtalo de nuevo.",
+      "downloaded": "Descargado",
+      "downloading": "Descargando {{percent}}%",
+      "downloadCourse": "Descargar Curso",
+      "courseAvailableOffline": "Disponible para estudio sin conexión"
+    }
   },
   "accessibility": {
     "skipToContent": "Saltar al contenido principal",

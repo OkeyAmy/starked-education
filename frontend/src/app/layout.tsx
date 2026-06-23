@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { performanceMonitor } from '@/lib/performance-monitor';
+import { GlobalShell } from '@/components/PWA/GlobalShell';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -29,7 +30,10 @@ export default function RootLayout({
 
   return (
     <html lang={locale} dir={dir}>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <GlobalShell />
+        {children}
+      </body>
     </html>
   );
 }
