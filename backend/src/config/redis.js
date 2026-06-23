@@ -407,4 +407,38 @@ class RedisConfig {
 // Create singleton instance
 const redisConfig = new RedisConfig();
 
+/**
+ * Check Redis connectivity with ping command
+ * Used by health check endpoints to verify Redis availability
+ * @returns Health status with latency and optional error message
+ */
+async function checkRedisConnectivity() {
+  const start = Date.now();
+  try {
+    if (!redisConfig.isConnected) {
+      return {
+        status: 'unhealthy',
+        latencyMs: Date.now() - start,
+        error: 'Redis not connected'
+      };
+    }
+
+    await Promise.race([
+      redisConfig.client.ping(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Redis check timeout')), 2000)
+      )
+    ]);
+
+    return { status: 'healthy', latencyMs: Date.now() - start };
+  } catch (error) {
+    return {
+      status: 'unhealthy',
+      latencyMs: Date.now() - start,
+      error: error.message || 'Redis unavailable'
+    };
+  }
+}
+
 module.exports = redisConfig;
+module.exports.checkRedisConnectivity = checkRedisConnectivity;

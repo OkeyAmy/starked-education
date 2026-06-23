@@ -105,6 +105,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check routes - mounted before auth middleware so load balancers can access without credentials
+const healthRoutes = require('./routes/health').default || require('./routes/health');
+app.use('/health', healthRoutes);
+
 // Apply API version extraction middleware globally
 app.use(versionExtractor);
 

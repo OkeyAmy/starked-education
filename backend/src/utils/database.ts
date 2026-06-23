@@ -106,3 +106,36 @@ export async function checkBackupStatus(): Promise<{ status: string; lastBackup:
     return { status: 'error', lastBackup: null, error: error.message };
   }
 }
+
+/**
+ * Health check interface for dependency status
+ */
+export interface DependencyHealth {
+  status: 'healthy' | 'unhealthy';
+  latencyMs: number;
+  error?: string;
+}
+
+/**
+ * Check PostgreSQL database connectivity with a lightweight query
+ * Used by health check endpoints to verify database availability
+ * @returns Health status with latency and optional error message
+ */
+export async function checkDatabaseConnectivity(): Promise<DependencyHealth> {
+  const start = Date.now();
+  try {
+    await Promise.race([
+      query('SELECT 1'),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database check timeout')), 2000)
+      )
+    ]);
+    return { status: 'healthy', latencyMs: Date.now() - start };
+  } catch (error: any) {
+    return {
+      status: 'unhealthy',
+      latencyMs: Date.now() - start,
+      error: error?.code === 'ECONNREFUSED' ? 'Connection refused' : 'Database unavailable'
+    };
+  }
+}
