@@ -17,7 +17,10 @@
     "prepare": "husky install",
     "analyze": "ANALYZE=true next build",
     "lighthouse": "lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json",
-    "performance-test": "npm run build && npm run lighthouse"
+    "performance-test": "npm run build && npm run lighthouse",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^1.9.5",
@@ -85,7 +88,8 @@
     "next-bundle-analyzer": "^0.6.0",
     "postcss": "^8.4.28",
     "prettier": "^3.0.2",
-    "typescript": "^5.1.6"
+    "typescript": "^5.1.6",
+    "@playwright/test": "1.55.1"
   },
   "keywords": [
     "stellar",
